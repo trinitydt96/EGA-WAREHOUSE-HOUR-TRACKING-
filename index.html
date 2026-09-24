@@ -42,6 +42,9 @@ h2{font:600 19px/1.2 var(--cond);margin:22px 2px 8px;color:var(--ink-2)}
 .req{font:600 12px/1 var(--cond);background:var(--orange);color:#fff;border-radius:8px;padding:3px 7px;margin-left:6px;vertical-align:1px}
 select.need{border:2px solid var(--red)}
 input.other{border:2px solid var(--orange);font-size:17px}
+.lang{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.lang button{min-height:44px;border:1px solid var(--line);background:#fff;border-radius:8px;font:600 16px/1 var(--cond);cursor:pointer}
+.lang button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
 .clear{border:0;background:none;color:var(--ink-2);text-decoration:underline;font-size:14px;padding:0;justify-self:start;cursor:pointer}
 .bhead{display:flex;justify-content:space-between;align-items:center}
 .bhead b{font:700 19px/1 var(--cond)}
@@ -90,35 +93,40 @@ input.other{border:2px solid var(--orange);font-size:17px}
 </head>
 <body>
 <header>
-  <h1>EGA Labor <span>my hours</span></h1>
-  <div id="sync">Loading…</div>
+  <h1>EGA Labor <span data-t="app_sub">my hours</span></h1>
+  <div id="sync">…</div>
 </header>
 
 <main>
   <!-- ===== FORM ===== -->
   <div id="formView">
     <div class="card">
-      <label><span>Your name <span class="req">Required</span></span>
+      <div class="lang" id="lang" role="group" aria-label="Language">
+        <button type="button" data-lang="en">English</button>
+        <button type="button" data-lang="vi">Tiếng Việt</button>
+        <button type="button" data-lang="es">Español</button>
+      </div>
+      <label><span><span data-t="name">Your name</span> <span class="req" data-t="required">Required</span></span>
         <select id="worker" required></select>
       </label>
-      <label>Day worked
+      <label><span data-t="day">Day worked</span>
         <select id="date"></select>
       </label>
     </div>
 
-    <h2>What you worked on <span style="font:400 14px var(--body)">(fill in only the tasks you did)</span></h2>
+    <h2><span data-t="worked_on">What you worked on</span> <span style="font:400 14px var(--body)" data-t="fill_only">(fill in only the tasks you did)</span></h2>
     <div id="blocks"></div>
 
     <div class="total"><span id="totalNote">Total hours</span><b id="total">0.00</b></div>
 
     <div class="card">
-      <label><span>Notes <span style="font-weight:400;color:var(--ink-2)">(optional)</span></span>
-        <textarea id="notes" placeholder="Anything the office should know"></textarea>
+      <label><span><span data-t="notes">Notes</span> <span style="font-weight:400;color:var(--ink-2)">(<span data-t="optional">optional</span>)</span></span>
+        <textarea id="notes" data-tp="notes_ph" placeholder="Anything the office should know"></textarea>
       </label>
-      <button class="btn go" id="reviewBtn" type="button">Submit my hours</button>
+      <button class="btn go" id="reviewBtn" type="button" data-t="submit_mine">Submit my hours</button>
     </div>
 
-    <h2>Sent from this phone</h2>
+    <h2 data-t="sent_from">Sent from this phone</h2>
     <div class="card" id="history" style="gap:0;padding:4px 14px"></div>
   </div>
 
@@ -126,25 +134,25 @@ input.other{border:2px solid var(--orange);font-size:17px}
   <div id="doneView" hidden>
     <div class="done">
       <div class="check" aria-hidden="true">✓</div>
-      <h3 id="doneTitle">Done for today</h3>
-      <div><div class="big" id="doneHours">0.00</div><div style="color:var(--ink-2)">hours submitted</div></div>
+      <h3 id="doneTitle"></h3>
+      <div><div class="big" id="doneHours">0.00</div><div style="color:var(--ink-2)" data-t="hours_submitted">hours submitted</div></div>
       <ul id="doneList"></ul>
       <div class="state" id="doneState"></div>
-      <button class="btn dark" id="nextWorker" type="button">Next worker</button>
-      <button class="link" id="addMore" type="button">Forgot something? Add more hours for this day</button>
+      <button class="btn dark" id="nextWorker" type="button" data-t="next_worker">Next worker</button>
+      <button class="link" id="addMore" type="button" data-t="add_more">Forgot something? Add more hours for this day</button>
     </div>
   </div>
 </main>
 
 <div class="modal" id="reviewModal" role="dialog" aria-modal="true" aria-labelledby="reviewTitle">
   <div class="sheet">
-    <h3 id="reviewTitle">Check your hours</h3>
+    <h3 id="reviewTitle" data-t="check_hours">Check your hours</h3>
     <div id="reviewWho" style="color:var(--ink-2)"></div>
     <ul id="reviewList"></ul>
-    <div class="total" style="margin:0"><span>Total</span><b id="reviewTotal"></b></div>
+    <div class="total" style="margin:0"><span data-t="total">Total</span><b id="reviewTotal"></b></div>
     <div class="warn" id="reviewWarn" hidden></div>
-    <button class="btn go" id="submitBtn" type="button">Submit</button>
-    <button class="btn" id="editBtn" type="button">Go back and fix</button>
+    <button class="btn go" id="submitBtn" type="button" data-t="submit">Submit</button>
+    <button class="btn" id="editBtn" type="button" data-t="go_back">Go back and fix</button>
   </div>
 </div>
 
@@ -175,13 +183,116 @@ if (!device) { device = 'D' + Math.random().toString(36).slice(2, 7).toUpperCase
 let blocks = [];
 let connected = null;
 
+/* ---------- languages ---------- */
+const T = {
+  en: {
+    app_sub: 'my hours', name: 'Your name', required: 'Required', day: 'Day worked',
+    worked_on: 'What you worked on', fill_only: '(fill in only the tasks you did)',
+    total_hours: 'Total hours', total_usual: 'Total hours (usual day {0})', total: 'Total',
+    notes: 'Notes', optional: 'optional', notes_ph: 'Anything the office should know',
+    submit_mine: 'Submit my hours', sent_from: 'Sent from this phone',
+    done_today: '{0}, done for today', done_day: '{0}, done for {1}', hours_submitted: 'hours submitted',
+    next_worker: 'Next worker', add_more: 'Forgot something? Add more hours for this day',
+    check_hours: 'Check your hours', submit: 'Submit', go_back: 'Go back and fix',
+    connect_once: 'Connect once to load names', pick_name: 'Tap to pick your name',
+    today: 'Today', yesterday: 'Yesterday', task: 'Task', hrs: 'hrs',
+    project: 'Project', pick_project: 'Pick project', station: 'Station', pick_station: 'Pick station',
+    pick_project_first: 'Pick project first', type_project: 'Type the project name', type_station: 'Type what you worked on',
+    start_time: 'Start time', end_time: 'End time', start: 'Start', end: 'End',
+    end_after: 'End time has to be after start time.', clear_task: 'Clear this task', other: 'OTHER',
+    e_name: 'Pick your name first. It’s required.', e_task1: 'Fill in task 1: project, station, start and end.',
+    e_project: 'Task {0}: pick a project.', e_project_other: 'Task {0}: type the project name in the orange box.',
+    e_station: 'Task {0}: pick a station.', e_station_other: 'Task {0}: type what you worked on in the orange box.',
+    e_times: 'Task {0}: pick a start and end time.', e_order: 'Task {0}: end time has to be after start time.',
+    e_overlap: 'Task {0} overlaps task {1}. Fix the times.', e_overlap_prev: '{0} overlaps hours you already submitted ({1}).',
+    warn_less: 'That’s {0} hrs for the day, less than your usual {1}. Submit anyway if that’s right.',
+    warn_more: 'That’s {0} hrs for the day, more than your usual {1}. Submit anyway if that’s right.',
+    st_wait: 'Saved on this phone. It will send when there’s signal. You can close the app.', st_ok: 'Sent to the office.',
+    task_1: '{0} task', task_n: '{0} tasks', waiting: 'waiting', sent: 'sent', nothing_yet: 'Nothing submitted from this phone yet.',
+    n_waiting: '{0} waiting', offline_sfx: ', offline', cant_reach: 'Can’t reach sheet', offline: 'Offline', all_sent: 'All sent',
+    Production: 'Production', Support: 'Support', 'Lost Time': 'Lost Time'
+  },
+  vi: {
+    app_sub: 'giờ làm của tôi', name: 'Tên của bạn', required: 'Bắt buộc', day: 'Ngày làm việc',
+    worked_on: 'Công việc đã làm', fill_only: '(chỉ điền những việc bạn đã làm)',
+    total_hours: 'Tổng số giờ', total_usual: 'Tổng số giờ (ngày thường {0} giờ)', total: 'Tổng',
+    notes: 'Ghi chú', optional: 'không bắt buộc', notes_ph: 'Điều văn phòng cần biết',
+    submit_mine: 'Gửi giờ làm', sent_from: 'Đã gửi từ điện thoại này',
+    done_today: '{0}, đã xong hôm nay', done_day: '{0}, đã xong ngày {1}', hours_submitted: 'giờ đã gửi',
+    next_worker: 'Người tiếp theo', add_more: 'Quên gì không? Thêm giờ cho ngày này',
+    check_hours: 'Kiểm tra giờ làm', submit: 'Gửi', go_back: 'Quay lại sửa',
+    connect_once: 'Cần có mạng một lần để tải danh sách tên', pick_name: 'Chạm để chọn tên',
+    today: 'Hôm nay', yesterday: 'Hôm qua', task: 'Việc', hrs: 'giờ',
+    project: 'Dự án', pick_project: 'Chọn dự án', station: 'Công đoạn', pick_station: 'Chọn công đoạn',
+    pick_project_first: 'Chọn dự án trước', type_project: 'Nhập tên dự án', type_station: 'Nhập việc bạn đã làm',
+    start_time: 'Giờ bắt đầu', end_time: 'Giờ kết thúc', start: 'Bắt đầu', end: 'Kết thúc',
+    end_after: 'Giờ kết thúc phải sau giờ bắt đầu.', clear_task: 'Xóa việc này', other: 'KHÁC',
+    e_name: 'Vui lòng chọn tên trước. Mục này bắt buộc.', e_task1: 'Điền việc 1: dự án, công đoạn, giờ bắt đầu và kết thúc.',
+    e_project: 'Việc {0}: chọn dự án.', e_project_other: 'Việc {0}: nhập tên dự án vào ô màu cam.',
+    e_station: 'Việc {0}: chọn công đoạn.', e_station_other: 'Việc {0}: nhập việc đã làm vào ô màu cam.',
+    e_times: 'Việc {0}: chọn giờ bắt đầu và kết thúc.', e_order: 'Việc {0}: giờ kết thúc phải sau giờ bắt đầu.',
+    e_overlap: 'Việc {0} bị trùng giờ với việc {1}. Vui lòng sửa lại.', e_overlap_prev: '{0} bị trùng với giờ bạn đã gửi ({1}).',
+    warn_less: 'Tổng {0} giờ trong ngày, ít hơn mức thường ({1} giờ). Nếu đúng thì cứ gửi.',
+    warn_more: 'Tổng {0} giờ trong ngày, nhiều hơn mức thường ({1} giờ). Nếu đúng thì cứ gửi.',
+    st_wait: 'Đã lưu trên điện thoại. Sẽ tự gửi khi có sóng. Bạn có thể đóng ứng dụng.', st_ok: 'Đã gửi đến văn phòng.',
+    task_1: '{0} việc', task_n: '{0} việc', waiting: 'đang chờ', sent: 'đã gửi', nothing_yet: 'Chưa gửi gì từ điện thoại này.',
+    n_waiting: '{0} đang chờ', offline_sfx: ', mất mạng', cant_reach: 'Không kết nối được', offline: 'Mất mạng', all_sent: 'Đã gửi hết',
+    Production: 'Sản xuất', Support: 'Hỗ trợ', 'Lost Time': 'Mất thời gian'
+  },
+  es: {
+    app_sub: 'mis horas', name: 'Su nombre', required: 'Obligatorio', day: 'Día trabajado',
+    worked_on: 'En qué trabajó', fill_only: '(llene solo las tareas que hizo)',
+    total_hours: 'Total de horas', total_usual: 'Total de horas (día normal {0})', total: 'Total',
+    notes: 'Notas', optional: 'opcional', notes_ph: 'Algo que la oficina deba saber',
+    submit_mine: 'Enviar mis horas', sent_from: 'Enviado desde este teléfono',
+    done_today: '{0}, listo por hoy', done_day: '{0}, listo para el {1}', hours_submitted: 'horas enviadas',
+    next_worker: 'Siguiente trabajador', add_more: '¿Olvidó algo? Agregue más horas para este día',
+    check_hours: 'Revise sus horas', submit: 'Enviar', go_back: 'Regresar y corregir',
+    connect_once: 'Conéctese una vez para cargar los nombres', pick_name: 'Toque para elegir su nombre',
+    today: 'Hoy', yesterday: 'Ayer', task: 'Tarea', hrs: 'h',
+    project: 'Proyecto', pick_project: 'Elija proyecto', station: 'Estación', pick_station: 'Elija estación',
+    pick_project_first: 'Primero elija proyecto', type_project: 'Escriba el nombre del proyecto', type_station: 'Escriba en qué trabajó',
+    start_time: 'Hora de inicio', end_time: 'Hora final', start: 'Inicio', end: 'Final',
+    end_after: 'La hora final debe ser después de la hora de inicio.', clear_task: 'Borrar esta tarea', other: 'OTRO',
+    e_name: 'Primero elija su nombre. Es obligatorio.', e_task1: 'Llene la tarea 1: proyecto, estación, inicio y final.',
+    e_project: 'Tarea {0}: elija un proyecto.', e_project_other: 'Tarea {0}: escriba el nombre del proyecto en el cuadro naranja.',
+    e_station: 'Tarea {0}: elija una estación.', e_station_other: 'Tarea {0}: escriba en qué trabajó en el cuadro naranja.',
+    e_times: 'Tarea {0}: elija la hora de inicio y final.', e_order: 'Tarea {0}: la hora final debe ser después de la de inicio.',
+    e_overlap: 'La tarea {0} se cruza con la tarea {1}. Corrija las horas.', e_overlap_prev: '{0} se cruza con horas que ya envió ({1}).',
+    warn_less: 'Son {0} horas en el día, menos de lo normal ({1}). Envíe de todos modos si es correcto.',
+    warn_more: 'Son {0} horas en el día, más de lo normal ({1}). Envíe de todos modos si es correcto.',
+    st_wait: 'Guardado en este teléfono. Se enviará cuando haya señal. Puede cerrar la aplicación.', st_ok: 'Enviado a la oficina.',
+    task_1: '{0} tarea', task_n: '{0} tareas', waiting: 'pendiente', sent: 'enviado', nothing_yet: 'Todavía no se ha enviado nada desde este teléfono.',
+    n_waiting: '{0} pendientes', offline_sfx: ', sin conexión', cant_reach: 'Sin conexión con la hoja', offline: 'Sin conexión', all_sent: 'Todo enviado',
+    Production: 'Producción', Support: 'Apoyo', 'Lost Time': 'Tiempo perdido'
+  }
+};
+const LOCALE = { en: 'en-US', vi: 'vi-VN', es: 'es-US' };
+let lang = load('lang', null) || (/^vi/i.test(navigator.language) ? 'vi' : /^es/i.test(navigator.language) ? 'es' : 'en');
+const t = (k, ...a) => String((T[lang] && T[lang][k]) || T.en[k] || k).replace(/\{(\d)\}/g, (_, i) => a[+i]);
+// dropdown labels: projects/stations saved in English; station names can have Vietnamese/Spanish in the STATIONS tab
+const stationLabel = n => {
+  if (isOther(n)) return t('other');
+  const s = lists.stations.find(x => x.name === n), tr = s && s[lang];
+  if (!tr || lang === 'en') return n;
+  return tr.toUpperCase().includes(n.toUpperCase()) ? tr : tr + ' (' + n + ')';
+};
+const projectLabel = n => isOther(n) ? t('other') : n;
+const savedLabel = (n, fn) => /^OTHER - /.test(n) ? t('other') + ' - ' + n.slice(8) : fn(n);
+function applyLang() {
+  document.documentElement.lang = lang;
+  document.querySelectorAll('[data-t]').forEach(el => el.textContent = t(el.dataset.t));
+  document.querySelectorAll('[data-tp]').forEach(el => el.placeholder = t(el.dataset.tp));
+  document.querySelectorAll('#lang button').forEach(b => b.classList.toggle('on', b.dataset.lang === lang));
+}
+
 const $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const pad = n => String(n).padStart(2, '0');
 const ymd = d => d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
 const mins = t => { const p = t.split(':'); return +p[0] * 60 + +p[1]; };
 const tLabel = t => { const m = mins(t), h = Math.floor(m / 60); return ((h % 12) || 12) + ':' + pad(m % 60) + (h >= 12 ? ' PM' : ' AM'); };
-const dLabel = s => new Date(s + 'T00:00').toLocaleDateString([], { weekday: 'short', month: 'numeric', day: 'numeric' });
+const dLabel = s => new Date(s + 'T00:00').toLocaleDateString(LOCALE[lang], { weekday: 'short', month: 'numeric', day: 'numeric' });
 const newId = p => p + device + Date.now().toString(36).toUpperCase() + Math.random().toString(36).slice(2, 5).toUpperCase();
 const catClass = c => (c || '').startsWith('Lost') ? 'Lost' : (c || 'Production');
 const blockHrs = b => (b.start && b.end && mins(b.end) > mins(b.start)) ? (mins(b.end) - mins(b.start)) / 60 : 0;
@@ -206,18 +317,18 @@ function options(items, value, placeholder, labelFn) {
 }
 function renderTop() {
   const w = $('#worker').value || last.worker || '';
-  $('#worker').innerHTML = lists.workers.length ? workerOptions(w) : '<option value="">Connect once to load names</option>';
+  $('#worker').innerHTML = lists.workers.length ? workerOptions(w) : '<option value="">' + t('connect_once') + '</option>';
   const d = $('#date').value || ymd(new Date()), days = [];
   for (let i = 0; i < 7; i++) { const x = new Date(); x.setDate(x.getDate() - i); days.push(ymd(x)); }
   $('#date').innerHTML = days.map((s, i) => '<option value="' + s + '"' + (s === d ? ' selected' : '') + '>' +
-    (i === 0 ? 'Today, ' : i === 1 ? 'Yesterday, ' : '') + dLabel(s) + '</option>').join('');
+    (i === 0 ? t('today') + ', ' : i === 1 ? t('yesterday') + ', ' : '') + dLabel(s) + '</option>').join('');
   markEmpty();
 }
 /* names grouped by the Crew column (DIV.8, DIV.7, …), in the same order as the WORKERS tab */
 function workerOptions(v) {
   const groups = {}, order = [];
   lists.workers.forEach(x => { const g = x.crew || 'Other'; if (!groups[g]) { groups[g] = []; order.push(g); } groups[g].push(x.name); });
-  return '<option value="">Tap to pick your name</option>' + order.map(g => '<optgroup label="' + esc(g) + '">' +
+  return '<option value="">' + t('pick_name') + '</option>' + order.map(g => '<optgroup label="' + esc(g) + '">' +
     groups[g].slice().sort(az).map(n => '<option value="' + esc(n) + '"' + (n === v ? ' selected' : '') + '>' + esc(n) + '</option>').join('') + '</optgroup>').join('');
 }
 function markEmpty() { document.querySelectorAll('select').forEach(s => s.classList.toggle('empty', !s.value)); }
@@ -232,28 +343,29 @@ const used = b => !!(b.project || b.station || b.end);   // a start time alone (
 const usedRows = () => blocks.filter(used);
 function renderBlocks() {
   $('#blocks').innerHTML = blocks.map((b, i) => {
-    const st = stationsFor(b.project), s = lists.stations.find(x => x.name === b.station);
+    const st = stationsFor(b.project).map(x => x.name).sort((a, c) => (isOther(a) - isOther(c)) || az(stationLabel(a), stationLabel(c)));
+    const s = lists.stations.find(x => x.name === b.station);
     const h = blockHrs(b), u = used(b), bad = b.start && b.end && !h;
     return '<div class="block' + (u ? '' : ' idle') + (bad ? ' bad' : '') + '" data-i="' + i + '">' +
-      '<div class="bhead"><b>' + (i + 1) + '. Task' + (i ? '<span class="opt">optional</span>' : '') +
-      (s ? '<span class="cat ' + catClass(s.category) + '">' + esc(s.category) + '</span>' : '') + '</b>' +
-      '<span class="hrs">' + (h ? h.toFixed(2) + ' hrs' : '–') + '</span></div>' +
-      '<label>Project<select data-f="project">' + options(lists.projects.map(p => p.name), b.project, 'Pick project') + '</select></label>' +
-      (isOther(b.project) ? '<input class="other" data-f="projectOther" maxlength="60" placeholder="Type the project name" value="' + esc(b.projectOther || '') + '">' : '') +
-      '<label>Station<select data-f="station">' + options(st.map(x => x.name), b.station, b.project ? 'Pick station' : 'Pick project first') + '</select></label>' +
-      (isOther(b.station) ? '<input class="other" data-f="stationOther" maxlength="60" placeholder="Type what you worked on" value="' + esc(b.stationOther || '') + '">' : '') +
-      '<div class="two"><label>Start time<select data-f="start">' + options(TIMES, b.start, 'Start', tLabel) + '</select></label>' +
-      '<label>End time<select data-f="end">' + options(TIMES, b.end, 'End', tLabel) + '</select></label></div>' +
-      (bad ? '<div class="msg">End time has to be after start time.</div>' : '') +
-      (u ? '<button class="clear" data-clear="' + i + '" type="button">Clear this task</button>' : '') + '</div>';
+      '<div class="bhead"><b>' + (i + 1) + '. ' + t('task') + (i ? '<span class="opt">' + t('optional') + '</span>' : '') +
+      (s ? '<span class="cat ' + catClass(s.category) + '">' + esc(t(s.category)) + '</span>' : '') + '</b>' +
+      '<span class="hrs">' + (h ? h.toFixed(2) + ' ' + t('hrs') : '–') + '</span></div>' +
+      '<label>' + t('project') + '<select data-f="project">' + options(lists.projects.map(p => p.name), b.project, t('pick_project'), projectLabel) + '</select></label>' +
+      (isOther(b.project) ? '<input class="other" data-f="projectOther" maxlength="60" placeholder="' + esc(t('type_project')) + '" value="' + esc(b.projectOther || '') + '">' : '') +
+      '<label>' + t('station') + '<select data-f="station">' + options(st, b.station, b.project ? t('pick_station') : t('pick_project_first'), stationLabel) + '</select></label>' +
+      (isOther(b.station) ? '<input class="other" data-f="stationOther" maxlength="60" placeholder="' + esc(t('type_station')) + '" value="' + esc(b.stationOther || '') + '">' : '') +
+      '<div class="two"><label>' + t('start_time') + '<select data-f="start">' + options(TIMES, b.start, t('start'), tLabel) + '</select></label>' +
+      '<label>' + t('end_time') + '<select data-f="end">' + options(TIMES, b.end, t('end'), tLabel) + '</select></label></div>' +
+      (bad ? '<div class="msg">' + t('end_after') + '</div>' : '') +
+      (u ? '<button class="clear" data-clear="' + i + '" type="button">' + t('clear_task') + '</button>' : '') + '</div>';
   }).join('');
   renderTotal(); markEmpty();
 }
 function renderTotal() {
-  const t = usedRows().reduce((a, b) => a + blockHrs(b), 0);
-  $('#total').textContent = t.toFixed(2);
+  const tot = usedRows().reduce((a, b) => a + blockHrs(b), 0);
+  $('#total').textContent = tot.toFixed(2);
   const w = lists.workers.find(x => x.name === $('#worker').value);
-  $('#totalNote').textContent = w ? 'Total hours (usual day ' + w.std + ')' : 'Total hours';
+  $('#totalNote').textContent = w ? t('total_usual', w.std) : t('total_hours');
 }
 $('#blocks').addEventListener('input', e => {
   const el = e.target, card = el.closest('[data-i]');
@@ -280,39 +392,38 @@ $('#blocks').addEventListener('click', e => {
 
 /* ---------- check + submit ---------- */
 function problems() {
-  if (!$('#worker').value) { $('#worker').classList.add('need'); window.scrollTo(0, 0); return 'Pick your name first. It’s required.'; }
-  if (!usedRows().length) return 'Fill in task 1: project, station, start and end.';
+  if (!$('#worker').value) { $('#worker').classList.add('need'); window.scrollTo(0, 0); return t('e_name'); }
+  if (!usedRows().length) return t('e_task1');
   for (let i = 0; i < blocks.length; i++) {
-    const b = blocks[i], n = 'Task ' + (i + 1);
+    const b = blocks[i], n = i + 1;
     if (!used(b)) continue;
-    if (!b.project) return n + ': pick a project.';
-    if (isOther(b.project) && !(b.projectOther || '').trim()) return n + ': type the project name in the orange box.';
-    if (!b.station) return n + ': pick a station.';
-    if (isOther(b.station) && !(b.stationOther || '').trim()) return n + ': type what you worked on in the orange box.';
-    if (!b.start || !b.end) return n + ': pick a start and end time.';
-    if (!blockHrs(b)) return n + ': end time has to be after start time.';
+    if (!b.project) return t('e_project', n);
+    if (isOther(b.project) && !(b.projectOther || '').trim()) return t('e_project_other', n);
+    if (!b.station) return t('e_station', n);
+    if (isOther(b.station) && !(b.stationOther || '').trim()) return t('e_station_other', n);
+    if (!b.start || !b.end) return t('e_times', n);
+    if (!blockHrs(b)) return t('e_order', n);
   }
   const s = blocks.map((b, i) => ({ i, u: used(b), a: mins(b.start || '00:00'), z: mins(b.end || '00:00') })).filter(x => x.u).sort((x, y) => x.a - y.a);
-  for (let k = 1; k < s.length; k++) if (s[k].a < s[k - 1].z) return 'Task ' + (s[k].i + 1) + ' overlaps task ' + (s[k - 1].i + 1) + '. Fix the times.';
+  for (let k = 1; k < s.length; k++) if (s[k].a < s[k - 1].z) return t('e_overlap', s[k].i + 1, s[k - 1].i + 1);
   // overlap with anything already submitted for this day on this phone
   const prev = (done[$('#worker').value + '|' + $('#date').value] || []).flatMap(x => x.entries);
   for (const b of usedRows()) for (const p of prev)
-    if (mins(b.start) < mins(p.end) && mins(b.end) > mins(p.start)) return tLabel(b.start) + '–' + tLabel(b.end) + ' overlaps hours you already submitted (' + tLabel(p.start) + '–' + tLabel(p.end) + ').';
+    if (mins(b.start) < mins(p.end) && mins(b.end) > mins(p.start)) return t('e_overlap_prev', tLabel(b.start) + '–' + tLabel(b.end), tLabel(p.start) + '–' + tLabel(p.end));
   return '';
 }
 function openReview() {
   const p = problems(); if (p) { toast(p); return; }
-  const w = $('#worker').value, t = usedRows().reduce((a, b) => a + blockHrs(b), 0);
+  const w = $('#worker').value, t2 = usedRows().reduce((a, b) => a + blockHrs(b), 0);
   const std = (lists.workers.find(x => x.name === w) || {}).std || 8;
   const prevT = (done[w + '|' + $('#date').value] || []).reduce((a, s) => a + s.total, 0);
   $('#reviewWho').textContent = w + ', ' + dLabel($('#date').value);
   $('#reviewList').innerHTML = usedRows().sort((a, b) => mins(a.start) - mins(b.start)).map(b =>
-    '<li><b>' + esc(stName(b)) + '</b><span class="h">' + blockHrs(b).toFixed(2) + '</span><span>' + esc(projName(b)) + ', ' + tLabel(b.start) + ' – ' + tLabel(b.end) + '</span></li>').join('');
-  $('#reviewTotal').textContent = t.toFixed(2) + ' hrs';
-  const all = t + prevT, warn = $('#reviewWarn');
+    '<li><b>' + esc(savedLabel(stName(b), stationLabel)) + '</b><span class="h">' + blockHrs(b).toFixed(2) + '</span><span>' + esc(savedLabel(projName(b), projectLabel)) + ', ' + tLabel(b.start) + ' – ' + tLabel(b.end) + '</span></li>').join('');
+  $('#reviewTotal').textContent = t2.toFixed(2) + ' ' + t('hrs');
+  const all = t2 + prevT, warn = $('#reviewWarn');
   warn.hidden = Math.abs(all - std) < 0.01;
-  warn.textContent = all < std ? 'That’s ' + all.toFixed(2) + ' hrs for the day, less than your usual ' + std + '. Submit anyway if that’s right.'
-    : 'That’s ' + all.toFixed(2) + ' hrs for the day, more than your usual ' + std + '. Submit anyway if that’s right.';
+  warn.textContent = t(all < std ? 'warn_less' : 'warn_more', all.toFixed(2), std);
   $('#reviewModal').classList.add('on');
 }
 function submitDay() {
@@ -352,10 +463,10 @@ function showDone(key) {
   const subs = done[key] || []; if (!subs.length) return showForm(true);
   const [w, d] = key.split('|'), entries = subs.flatMap(s => s.entries).sort((a, b) => mins(a.start) - mins(b.start));
   const isToday = d === ymd(new Date());
-  $('#doneTitle').textContent = w + ', done for ' + (isToday ? 'today' : dLabel(d));
+  $('#doneTitle').textContent = isToday ? t('done_today', w) : t('done_day', w, dLabel(d));
   $('#doneHours').textContent = subs.reduce((a, s) => a + s.total, 0).toFixed(2);
-  $('#doneList').innerHTML = entries.map(e => '<li><b>' + esc(e.station) + '</b><span class="h">' + ((mins(e.end) - mins(e.start)) / 60).toFixed(2) + '</span><span>' +
-    esc(e.project) + ', ' + tLabel(e.start) + ' – ' + tLabel(e.end) + '</span></li>').join('');
+  $('#doneList').innerHTML = entries.map(e => '<li><b>' + esc(savedLabel(e.station, stationLabel)) + '</b><span class="h">' + ((mins(e.end) - mins(e.start)) / 60).toFixed(2) + '</span><span>' +
+    esc(savedLabel(e.project, projectLabel)) + ', ' + tLabel(e.start) + ' – ' + tLabel(e.end) + '</span></li>').join('');
   renderDoneState(key);
   $('#formView').hidden = true; $('#doneView').hidden = false; window.scrollTo(0, 0);
 }
@@ -365,7 +476,7 @@ function renderDoneState(key) {
   const ids = new Set(queue.map(q => q.submission.id)), waiting = (done[key] || []).some(s => ids.has(s.id));
   const el = $('#doneState');
   el.className = 'state ' + (waiting ? 'wait' : 'ok');
-  el.textContent = waiting ? 'Saved on this phone. It will send when there’s signal. You can close the app.' : 'Sent to the office.';
+  el.textContent = waiting ? t('st_wait') : t('st_ok');
 }
 function checkDone() {
   const key = $('#worker').value + '|' + $('#date').value;
@@ -378,9 +489,9 @@ function renderHistory() {
   $('#history').innerHTML = subs.length ? subs.map(s =>
     '<div style="display:grid;grid-template-columns:1fr auto;padding:10px 0;border-bottom:1px solid var(--line);font-size:14px">' +
     '<b style="font:600 17px var(--cond)">' + esc(s.worker) + '</b><b style="font:700 18px var(--cond);text-align:right">' + s.total.toFixed(2) + ' h</b>' +
-    '<span style="color:var(--ink-2)">' + dLabel(s.date) + ', ' + s.entries.length + ' task' + (s.entries.length > 1 ? 's' : '') + '</span>' +
-    '<span style="text-align:right;font-weight:600;color:' + (ids.has(s.id) ? 'var(--orange)">waiting' : 'var(--glass)">sent') + '</span></div>').join('')
-    : '<p style="color:var(--ink-2);margin:10px 0">Nothing submitted from this phone yet.</p>';
+    '<span style="color:var(--ink-2)">' + dLabel(s.date) + ', ' + t(s.entries.length > 1 ? 'task_n' : 'task_1', s.entries.length) + '</span>' +
+    '<span style="text-align:right;font-weight:600;color:' + (ids.has(s.id) ? 'var(--orange)">' + t('waiting') : 'var(--glass)">' + t('sent')) + '</span></div>').join('')
+    : '<p style="color:var(--ink-2);margin:10px 0">' + t('nothing_yet') + '</p>';
 }
 
 /* ---------- sync ---------- */
@@ -400,14 +511,21 @@ async function flush() {
 function renderSync() {
   const s = $('#sync');
   if (WH.includes('PASTE')) { s.className = 'bad'; s.textContent = 'Set WH URL'; return; }
-  if (queue.length) { s.className = 'wait'; s.textContent = queue.length + ' waiting' + (navigator.onLine ? '' : ', offline'); return; }
-  if (connected === false) { s.className = 'bad'; s.textContent = navigator.onLine ? 'Can’t reach sheet' : 'Offline'; return; }
-  s.className = 'ok'; s.textContent = 'All sent';
+  if (queue.length) { s.className = 'wait'; s.textContent = t('n_waiting', queue.length) + (navigator.onLine ? '' : t('offline_sfx')); return; }
+  if (connected === false) { s.className = 'bad'; s.textContent = navigator.onLine ? t('cant_reach') : t('offline'); return; }
+  if (connected === null) { s.className = ''; s.textContent = '…'; return; }
+  s.className = 'ok'; s.textContent = t('all_sent');
 }
 
 /* ---------- events ---------- */
 $('#worker').addEventListener('change', () => { $('#worker').classList.toggle('need', !$('#worker').value); checkDone(); });
 $('#date').addEventListener('change', () => { if (!$('#doneView').hidden) showForm(true); checkDone(); });
+$('#lang').addEventListener('click', e => {
+  const b = e.target.closest('[data-lang]'); if (!b) return;
+  lang = b.dataset.lang; save('lang', lang); applyLang();
+  renderTop(); renderBlocks(); renderHistory(); renderSync();
+  if (!$('#doneView').hidden) showDone($('#worker').value + '|' + $('#date').value);
+});
 $('#reviewBtn').addEventListener('click', openReview);
 $('#submitBtn').addEventListener('click', submitDay);
 $('#editBtn').addEventListener('click', () => $('#reviewModal').classList.remove('on'));
@@ -419,6 +537,7 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden) flus
 
 /* ---------- boot ---------- */
 pruneDone(); save('done', done);
+applyLang();
 renderTop(); showForm(true); checkDone(); renderSync();
 fetchLists().then(() => { checkDone(); flush(); });
 setInterval(flush, 30000);
