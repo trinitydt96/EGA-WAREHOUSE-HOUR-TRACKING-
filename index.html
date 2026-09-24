@@ -41,6 +41,7 @@ h2{font:600 19px/1.2 var(--cond);margin:22px 2px 8px;color:var(--ink-2)}
 .opt{font:500 13px var(--body);color:var(--ink-2);margin-left:6px}
 .req{font:600 12px/1 var(--cond);background:var(--orange);color:#fff;border-radius:8px;padding:3px 7px;margin-left:6px;vertical-align:1px}
 select.need{border:2px solid var(--red)}
+input.other{border:2px solid var(--orange);font-size:17px}
 .clear{border:0;background:none;color:var(--ink-2);text-decoration:underline;font-size:14px;padding:0;justify-self:start;cursor:pointer}
 .bhead{display:flex;justify-content:space-between;align-items:center}
 .bhead b{font:700 19px/1 var(--cond)}
@@ -159,7 +160,12 @@ const save = (k, v) => { try { localStorage.setItem(K(k), JSON.stringify(v)); } 
 let lists = load('lists', { workers: [], projects: [], stations: [] });
 // A–Z everywhere: projects, stations, and names inside each division (divisions keep the WORKERS tab order)
 const az = (a, b) => String(a).localeCompare(String(b), 'en', { sensitivity: 'base', numeric: true });
-function sortLists() { (lists.projects || []).sort((a, b) => az(a.name, b.name)); (lists.stations || []).sort((a, b) => az(a.name, b.name)); }
+const isOther = n => /^other\b/i.test(String(n || '').trim());
+const azO = (a, b) => (isOther(a) - isOther(b)) || az(a, b);   // A–Z, with OTHER at the bottom
+function sortLists() { (lists.projects || []).sort((a, b) => azO(a.name, b.name)); (lists.stations || []).sort((a, b) => azO(a.name, b.name)); }
+// what gets saved: "OTHER - whatever they typed"
+const projName = b => isOther(b.project) ? 'OTHER - ' + (b.projectOther || '').trim() : b.project;
+const stName = b => isOther(b.station) ? 'OTHER - ' + (b.stationOther || '').trim() : b.station;
 sortLists();
 let queue = load('queue', []);        // submissions waiting to reach the sheet
 let done  = load('done', {});         // "worker|date" -> [submission, ...] made on this phone
@@ -233,7 +239,9 @@ function renderBlocks() {
       (s ? '<span class="cat ' + catClass(s.category) + '">' + esc(s.category) + '</span>' : '') + '</b>' +
       '<span class="hrs">' + (h ? h.toFixed(2) + ' hrs' : '–') + '</span></div>' +
       '<label>Project<select data-f="project">' + options(lists.projects.map(p => p.name), b.project, 'Pick project') + '</select></label>' +
+      (isOther(b.project) ? '<input class="other" data-f="projectOther" maxlength="60" placeholder="Type the project name" value="' + esc(b.projectOther || '') + '">' : '') +
       '<label>Station<select data-f="station">' + options(st.map(x => x.name), b.station, b.project ? 'Pick station' : 'Pick project first') + '</select></label>' +
+      (isOther(b.station) ? '<input class="other" data-f="stationOther" maxlength="60" placeholder="Type what you worked on" value="' + esc(b.stationOther || '') + '">' : '') +
       '<div class="two"><label>Start time<select data-f="start">' + options(TIMES, b.start, 'Start', tLabel) + '</select></label>' +
       '<label>End time<select data-f="end">' + options(TIMES, b.end, 'End', tLabel) + '</select></label></div>' +
       (bad ? '<div class="msg">End time has to be after start time.</div>' : '') +
@@ -247,9 +255,18 @@ function renderTotal() {
   const w = lists.workers.find(x => x.name === $('#worker').value);
   $('#totalNote').textContent = w ? 'Total hours (usual day ' + w.std + ')' : 'Total hours';
 }
+$('#blocks').addEventListener('input', e => {
+  const el = e.target, card = el.closest('[data-i]');
+  if (!card || (el.dataset.f !== 'projectOther' && el.dataset.f !== 'stationOther')) return;
+  blocks[+card.dataset.i][el.dataset.f] = el.value;
+});
 $('#blocks').addEventListener('change', e => {
   const el = e.target, card = el.closest('[data-i]'); if (!card || !el.dataset.f) return;
+  if (el.dataset.f === 'projectOther' || el.dataset.f === 'stationOther') return;
   const i = +card.dataset.i, b = blocks[i]; b[el.dataset.f] = el.value;
+  if (el.dataset.f === 'project' && !isOther(b.project)) b.projectOther = '';
+  if (el.dataset.f === 'station' && !isOther(b.station)) b.stationOther = '';
+  if ((el.dataset.f === 'project' || el.dataset.f === 'station') && isOther(el.value)) setTimeout(() => { const t = document.querySelector('[data-i="' + i + '"] [data-f="' + el.dataset.f + 'Other"]'); if (t) t.focus(); }, 0);
   if (el.dataset.f === 'project') { if (!stationsFor(b.project).some(s => s.name === b.station)) b.station = ''; if (i === 0) { last.project = b.project; save('last', last); } }
   if (el.dataset.f === 'end' && blocks[i + 1] && !used(blocks[i + 1])) blocks[i + 1].start = el.value; // next task starts where this one ended
   renderBlocks();
@@ -269,7 +286,9 @@ function problems() {
     const b = blocks[i], n = 'Task ' + (i + 1);
     if (!used(b)) continue;
     if (!b.project) return n + ': pick a project.';
+    if (isOther(b.project) && !(b.projectOther || '').trim()) return n + ': type the project name in the orange box.';
     if (!b.station) return n + ': pick a station.';
+    if (isOther(b.station) && !(b.stationOther || '').trim()) return n + ': type what you worked on in the orange box.';
     if (!b.start || !b.end) return n + ': pick a start and end time.';
     if (!blockHrs(b)) return n + ': end time has to be after start time.';
   }
@@ -288,7 +307,7 @@ function openReview() {
   const prevT = (done[w + '|' + $('#date').value] || []).reduce((a, s) => a + s.total, 0);
   $('#reviewWho').textContent = w + ', ' + dLabel($('#date').value);
   $('#reviewList').innerHTML = usedRows().sort((a, b) => mins(a.start) - mins(b.start)).map(b =>
-    '<li><b>' + esc(b.station) + '</b><span class="h">' + blockHrs(b).toFixed(2) + '</span><span>' + esc(b.project) + ', ' + tLabel(b.start) + ' – ' + tLabel(b.end) + '</span></li>').join('');
+    '<li><b>' + esc(stName(b)) + '</b><span class="h">' + blockHrs(b).toFixed(2) + '</span><span>' + esc(projName(b)) + ', ' + tLabel(b.start) + ' – ' + tLabel(b.end) + '</span></li>').join('');
   $('#reviewTotal').textContent = t.toFixed(2) + ' hrs';
   const all = t + prevT, warn = $('#reviewWarn');
   warn.hidden = Math.abs(all - std) < 0.01;
@@ -303,7 +322,7 @@ function submitDay() {
     notes: $('#notes').value.trim(), device,
     entries: usedRows().sort((a, b) => mins(a.start) - mins(b.start)).map(b => {
       const p = lists.projects.find(x => x.name === b.project) || {}, s = lists.stations.find(x => x.name === b.station) || {};
-      return { id: newId('E'), project: b.project, job: p.job || '', station: b.station, category: s.category || '', start: b.start, end: b.end };
+      return { id: newId('E'), project: projName(b), job: p.job || '', station: stName(b), category: s.category || '', start: b.start, end: b.end };
     })
   };
   sub.total = sub.entries.reduce((a, e) => a + (mins(e.end) - mins(e.start)) / 60, 0);
