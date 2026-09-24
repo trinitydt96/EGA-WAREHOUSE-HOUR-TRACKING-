@@ -157,6 +157,10 @@ const K = k => 'egaLabor_' + k;
 const load = (k, d) => { try { const v = localStorage.getItem(K(k)); return v ? JSON.parse(v) : d; } catch (e) { return d; } };
 const save = (k, v) => { try { localStorage.setItem(K(k), JSON.stringify(v)); } catch (e) {} };
 let lists = load('lists', { workers: [], projects: [], stations: [] });
+// A–Z everywhere: projects, stations, and names inside each division (divisions keep the WORKERS tab order)
+const az = (a, b) => String(a).localeCompare(String(b), 'en', { sensitivity: 'base', numeric: true });
+function sortLists() { (lists.projects || []).sort((a, b) => az(a.name, b.name)); (lists.stations || []).sort((a, b) => az(a.name, b.name)); }
+sortLists();
 let queue = load('queue', []);        // submissions waiting to reach the sheet
 let done  = load('done', {});         // "worker|date" -> [submission, ...] made on this phone
 let last  = load('last', {});         // last worker + project, to pre-fill
@@ -185,7 +189,7 @@ async function fetchLists() {
   if (WH.includes('PASTE')) { connected = false; renderSync(); return; }
   try {
     const j = await (await fetch(WH + '?action=lists')).json();
-    if (j.ok) { lists = j.lists; save('lists', lists); connected = true; renderTop(); renderBlocks(); }
+    if (j.ok) { lists = j.lists; sortLists(); save('lists', lists); connected = true; renderTop(); renderBlocks(); }
     else connected = false;
   } catch (e) { connected = false; }
   renderSync();
@@ -208,7 +212,7 @@ function workerOptions(v) {
   const groups = {}, order = [];
   lists.workers.forEach(x => { const g = x.crew || 'Other'; if (!groups[g]) { groups[g] = []; order.push(g); } groups[g].push(x.name); });
   return '<option value="">Tap to pick your name</option>' + order.map(g => '<optgroup label="' + esc(g) + '">' +
-    groups[g].map(n => '<option value="' + esc(n) + '"' + (n === v ? ' selected' : '') + '>' + esc(n) + '</option>').join('') + '</optgroup>').join('');
+    groups[g].slice().sort(az).map(n => '<option value="' + esc(n) + '"' + (n === v ? ' selected' : '') + '>' + esc(n) + '</option>').join('') + '</optgroup>').join('');
 }
 function markEmpty() { document.querySelectorAll('select').forEach(s => s.classList.toggle('empty', !s.value)); }
 const stationsFor = p => lists.stations.filter(s => s.projects === 'All' || (Array.isArray(s.projects) && s.projects.includes(p)));
