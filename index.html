@@ -199,7 +199,7 @@ const T = {
     project: 'Project', pick_project: 'Pick project', station: 'Station', pick_station: 'Pick station',
     pick_project_first: 'Pick project first', type_project: 'Type the project name', type_station: 'Type what you worked on',
     start_time: 'Start time', end_time: 'End time', start: 'Start', end: 'End',
-    end_after: 'End time has to be after start time.', clear_task: 'Clear this task', other: 'OTHER',
+    end_after: 'End time has to be after start time.', lunch: 'Lunch', lunch_note: 'Lunch 11:30–12:30 is not counted.', clear_task: 'Clear this task', other: 'OTHER',
     e_name: 'Pick your name first. It’s required.', e_task1: 'Fill in task 1: project, station, start and end.',
     e_project: 'Task {0}: pick a project.', e_project_other: 'Task {0}: type the project name in the orange box.',
     e_station: 'Task {0}: pick a station.', e_station_other: 'Task {0}: type what you worked on in the orange box.',
@@ -226,7 +226,7 @@ const T = {
     project: 'Dự án', pick_project: 'Chọn dự án', station: 'Công đoạn', pick_station: 'Chọn công đoạn',
     pick_project_first: 'Chọn dự án trước', type_project: 'Nhập tên dự án', type_station: 'Nhập việc bạn đã làm',
     start_time: 'Giờ bắt đầu', end_time: 'Giờ kết thúc', start: 'Bắt đầu', end: 'Kết thúc',
-    end_after: 'Giờ kết thúc phải sau giờ bắt đầu.', clear_task: 'Xóa việc này', other: 'KHÁC',
+    end_after: 'Giờ kết thúc phải sau giờ bắt đầu.', lunch: 'Nghỉ trưa', lunch_note: 'Giờ nghỉ trưa 11:30–12:30 không được tính.', clear_task: 'Xóa việc này', other: 'KHÁC',
     e_name: 'Vui lòng chọn tên trước. Mục này bắt buộc.', e_task1: 'Điền việc 1: dự án, công đoạn, giờ bắt đầu và kết thúc.',
     e_project: 'Việc {0}: chọn dự án.', e_project_other: 'Việc {0}: nhập tên dự án vào ô màu cam.',
     e_station: 'Việc {0}: chọn công đoạn.', e_station_other: 'Việc {0}: nhập việc đã làm vào ô màu cam.',
@@ -253,7 +253,7 @@ const T = {
     project: 'Proyecto', pick_project: 'Elija proyecto', station: 'Estación', pick_station: 'Elija estación',
     pick_project_first: 'Primero elija proyecto', type_project: 'Escriba el nombre del proyecto', type_station: 'Escriba en qué trabajó',
     start_time: 'Hora de inicio', end_time: 'Hora final', start: 'Inicio', end: 'Final',
-    end_after: 'La hora final debe ser después de la hora de inicio.', clear_task: 'Borrar esta tarea', other: 'OTRO',
+    end_after: 'La hora final debe ser después de la hora de inicio.', lunch: 'Almuerzo', lunch_note: 'El almuerzo de 11:30 a 12:30 no se cuenta.', clear_task: 'Borrar esta tarea', other: 'OTRO',
     e_name: 'Primero elija su nombre. Es obligatorio.', e_task1: 'Llene la tarea 1: proyecto, estación, inicio y final.',
     e_project: 'Tarea {0}: elija un proyecto.', e_project_other: 'Tarea {0}: escriba el nombre del proyecto en el cuadro naranja.',
     e_station: 'Tarea {0}: elija una estación.', e_station_other: 'Tarea {0}: escriba en qué trabajó en el cuadro naranja.',
@@ -271,14 +271,10 @@ const LOCALE = { en: 'en-US', vi: 'vi-VN', es: 'es-US' };
 let lang = load('lang', null) || (/^vi/i.test(navigator.language) ? 'vi' : /^es/i.test(navigator.language) ? 'es' : 'en');
 const t = (k, ...a) => String((T[lang] && T[lang][k]) || T.en[k] || k).replace(/\{(\d)\}/g, (_, i) => a[+i]);
 // dropdown labels: projects/stations saved in English; station names can have Vietnamese/Spanish in the STATIONS tab
-const stationLabel = n => {
-  if (isOther(n)) return t('other');
-  const s = lists.stations.find(x => x.name === n), tr = s && s[lang];
-  if (!tr || lang === 'en') return n;
-  return tr.toUpperCase().includes(n.toUpperCase()) ? tr : tr + ' (' + n + ')';
-};
-const projectLabel = n => isOther(n) ? t('other') : n;
-const savedLabel = (n, fn) => /^OTHER - /.test(n) ? t('other') + ' - ' + n.slice(8) : fn(n);
+// stations and projects always show exactly as typed in the Sheet (not translated)
+const stationLabel = n => n;
+const projectLabel = n => n;
+const savedLabel = n => n;
 function applyLang() {
   document.documentElement.lang = lang;
   document.querySelectorAll('[data-t]').forEach(el => el.textContent = t(el.dataset.t));
@@ -295,7 +291,14 @@ const tLabel = t => { const m = mins(t), h = Math.floor(m / 60); return ((h % 12
 const dLabel = s => new Date(s + 'T00:00').toLocaleDateString(LOCALE[lang], { weekday: 'short', month: 'numeric', day: 'numeric' });
 const newId = p => p + device + Date.now().toString(36).toUpperCase() + Math.random().toString(36).slice(2, 5).toUpperCase();
 const catClass = c => (c || '').startsWith('Lost') ? 'Lost' : (c || 'Production');
-const blockHrs = b => (b.start && b.end && mins(b.end) > mins(b.start)) ? (mins(b.end) - mins(b.start)) / 60 : 0;
+/* lunch 11:30 AM – 12:30 PM: greyed out in the dropdowns and never counted as work time */
+const LUNCH = ['11:30', '12:30'];
+const lunchOverlap = (a, z) => Math.max(0, Math.min(z, mins(LUNCH[1])) - Math.max(a, mins(LUNCH[0])));   // minutes
+const hrsOf = (a, z) => (a && z && mins(z) > mins(a)) ? (mins(z) - mins(a) - lunchOverlap(mins(a), mins(z))) / 60 : 0;
+const hasLunch = (a, z) => a && z && mins(z) > mins(a) && lunchOverlap(mins(a), mins(z)) > 0;
+const inLunch = (tm, which) => which === 'start' ? (mins(tm) >= mins(LUNCH[0]) && mins(tm) < mins(LUNCH[1]))
+                                                 : (mins(tm) > mins(LUNCH[0]) && mins(tm) <= mins(LUNCH[1]));
+const blockHrs = b => (b.start && b.end && mins(b.end) > mins(b.start)) ? hrsOf(b.start, b.end) : 0;
 function toast(m) { const t = $('#toast'); t.textContent = m; t.classList.add('on'); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('on'), 2600); }
 
 /* time choices: every 30 min, 4:00 AM – 11:30 PM */
@@ -310,6 +313,13 @@ async function fetchLists() {
     else connected = false;
   } catch (e) { connected = false; }
   renderSync();
+}
+function timeOptions(value, placeholder, which) {
+  return '<option value="">' + placeholder + '</option>' + TIMES.map(tm => {
+    const l = inLunch(tm, which);
+    return '<option value="' + tm + '"' + (tm === value && !l ? ' selected' : '') + (l ? ' disabled style="color:#9aa5a6;background:#E7EBEA"' : '') + '>' +
+      tLabel(tm) + (l ? '  —  ' + t('lunch') : '') + '</option>';
+  }).join('');
 }
 function options(items, value, placeholder, labelFn) {
   return '<option value="">' + placeholder + '</option>' +
@@ -354,9 +364,10 @@ function renderBlocks() {
       (isOther(b.project) ? '<input class="other" data-f="projectOther" maxlength="60" placeholder="' + esc(t('type_project')) + '" value="' + esc(b.projectOther || '') + '">' : '') +
       '<label>' + t('station') + '<select data-f="station">' + options(st, b.station, b.project ? t('pick_station') : t('pick_project_first'), stationLabel) + '</select></label>' +
       (isOther(b.station) ? '<input class="other" data-f="stationOther" maxlength="60" placeholder="' + esc(t('type_station')) + '" value="' + esc(b.stationOther || '') + '">' : '') +
-      '<div class="two"><label>' + t('start_time') + '<select data-f="start">' + options(TIMES, b.start, t('start'), tLabel) + '</select></label>' +
-      '<label>' + t('end_time') + '<select data-f="end">' + options(TIMES, b.end, t('end'), tLabel) + '</select></label></div>' +
+      '<div class="two"><label>' + t('start_time') + '<select data-f="start">' + timeOptions(b.start, t('start'), 'start') + '</select></label>' +
+      '<label>' + t('end_time') + '<select data-f="end">' + timeOptions(b.end, t('end'), 'end') + '</select></label></div>' +
       (bad ? '<div class="msg">' + t('end_after') + '</div>' : '') +
+      (hasLunch(b.start, b.end) ? '<div style="font-size:14px;color:var(--ink-2)">🍴 ' + t('lunch_note') + '</div>' : '') +
       (u ? '<button class="clear" data-clear="' + i + '" type="button">' + t('clear_task') + '</button>' : '') + '</div>';
   }).join('');
   renderTotal(); markEmpty();
@@ -380,7 +391,7 @@ $('#blocks').addEventListener('change', e => {
   if (el.dataset.f === 'station' && !isOther(b.station)) b.stationOther = '';
   if ((el.dataset.f === 'project' || el.dataset.f === 'station') && isOther(el.value)) setTimeout(() => { const t = document.querySelector('[data-i="' + i + '"] [data-f="' + el.dataset.f + 'Other"]'); if (t) t.focus(); }, 0);
   if (el.dataset.f === 'project') { if (!stationsFor(b.project).some(s => s.name === b.station)) b.station = ''; if (i === 0) { last.project = b.project; save('last', last); } }
-  if (el.dataset.f === 'end' && blocks[i + 1] && !used(blocks[i + 1])) blocks[i + 1].start = el.value; // next task starts where this one ended
+  if (el.dataset.f === 'end' && blocks[i + 1] && !used(blocks[i + 1])) blocks[i + 1].start = inLunch(el.value, 'start') ? LUNCH[1] : el.value; // next task starts where this one ended (after lunch if it ended at 11:30)
   renderBlocks();
 });
 $('#blocks').addEventListener('click', e => {
@@ -436,7 +447,7 @@ function submitDay() {
       return { id: newId('E'), project: projName(b), job: p.job || '', station: stName(b), category: s.category || '', start: b.start, end: b.end };
     })
   };
-  sub.total = sub.entries.reduce((a, e) => a + (mins(e.end) - mins(e.start)) / 60, 0);
+  sub.total = sub.entries.reduce((a, e) => a + hrsOf(e.start, e.end), 0);
   const key = w + '|' + date;
   (done[key] = done[key] || []).push(sub); pruneDone(); save('done', done);
   last.worker = w; save('last', last);
@@ -454,7 +465,7 @@ function showForm(keepWorker) {
   if (!keepWorker) $('#worker').value = '';
   const key = $('#worker').value + '|' + $('#date').value, prev = (done[key] || []).flatMap(s => s.entries);
   const lastEnd = prev.length ? prev.map(e => e.end).sort().pop() : null;
-  blocks = emptyRows(lastEnd);
+  blocks = emptyRows(lastEnd && inLunch(lastEnd, 'start') ? LUNCH[1] : lastEnd);
   $('#notes').value = '';
   $('#doneView').hidden = true; $('#formView').hidden = false;
   renderBlocks(); renderHistory(); markEmpty(); window.scrollTo(0, 0);
@@ -465,7 +476,7 @@ function showDone(key) {
   const isToday = d === ymd(new Date());
   $('#doneTitle').textContent = isToday ? t('done_today', w) : t('done_day', w, dLabel(d));
   $('#doneHours').textContent = subs.reduce((a, s) => a + s.total, 0).toFixed(2);
-  $('#doneList').innerHTML = entries.map(e => '<li><b>' + esc(savedLabel(e.station, stationLabel)) + '</b><span class="h">' + ((mins(e.end) - mins(e.start)) / 60).toFixed(2) + '</span><span>' +
+  $('#doneList').innerHTML = entries.map(e => '<li><b>' + esc(savedLabel(e.station, stationLabel)) + '</b><span class="h">' + hrsOf(e.start, e.end).toFixed(2) + '</span><span>' +
     esc(savedLabel(e.project, projectLabel)) + ', ' + tLabel(e.start) + ' – ' + tLabel(e.end) + '</span></li>').join('');
   renderDoneState(key);
   $('#formView').hidden = true; $('#doneView').hidden = false; window.scrollTo(0, 0);
