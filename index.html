@@ -196,13 +196,19 @@ function options(items, value, placeholder, labelFn) {
 }
 function renderTop() {
   const w = $('#worker').value || last.worker || '';
-  $('#worker').innerHTML = lists.workers.length ? options(lists.workers.map(x => x.name), w, 'Tap to pick your name')
-    : '<option value="">Connect once to load names</option>';
+  $('#worker').innerHTML = lists.workers.length ? workerOptions(w) : '<option value="">Connect once to load names</option>';
   const d = $('#date').value || ymd(new Date()), days = [];
   for (let i = 0; i < 7; i++) { const x = new Date(); x.setDate(x.getDate() - i); days.push(ymd(x)); }
   $('#date').innerHTML = days.map((s, i) => '<option value="' + s + '"' + (s === d ? ' selected' : '') + '>' +
     (i === 0 ? 'Today, ' : i === 1 ? 'Yesterday, ' : '') + dLabel(s) + '</option>').join('');
   markEmpty();
+}
+/* names grouped by the Crew column (DIV.8, DIV.7, …), in the same order as the WORKERS tab */
+function workerOptions(v) {
+  const groups = {}, order = [];
+  lists.workers.forEach(x => { const g = x.crew || 'Other'; if (!groups[g]) { groups[g] = []; order.push(g); } groups[g].push(x.name); });
+  return '<option value="">Tap to pick your name</option>' + order.map(g => '<optgroup label="' + esc(g) + '">' +
+    groups[g].map(n => '<option value="' + esc(n) + '"' + (n === v ? ' selected' : '') + '>' + esc(n) + '</option>').join('') + '</optgroup>').join('');
 }
 function markEmpty() { document.querySelectorAll('select').forEach(s => s.classList.toggle('empty', !s.value)); }
 const stationsFor = p => lists.stations.filter(s => s.projects === 'All' || (Array.isArray(s.projects) && s.projects.includes(p)));
