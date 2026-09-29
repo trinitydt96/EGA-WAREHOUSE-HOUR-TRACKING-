@@ -45,6 +45,17 @@ input.other{border:2px solid var(--orange);font-size:17px}
 .lang{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
 .lang button{min-height:44px;border:1px solid var(--line);background:#fff;border-radius:8px;font:600 16px/1 var(--cond);cursor:pointer}
 .lang button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.logged{border-left:8px solid var(--steel);gap:6px;margin-bottom:10px}
+.block.lg{background:#E7EBEA;border-left-color:#9aa5a6;opacity:.85}
+.block.lg .bhead b,.block.lg .hrs{color:#6b7677}
+.block.lg select{background:#EEF1F0;color:#6b7677;border-color:#cfd5d4;-webkit-appearance:none;appearance:none}
+.lgtag{display:inline-block;font:600 13px/1 var(--cond);padding:4px 8px;border-radius:10px;margin-left:6px;background:#cfd5d4;color:#4A5557}
+.lghint{font-size:14px;color:var(--ink-2);margin:0 2px 10px}
+.logged h3{margin:0;font:700 18px/1.2 var(--cond)}
+.logged ul{list-style:none;margin:0;padding:0}
+.logged li{display:grid;grid-template-columns:1fr auto;padding:6px 0;border-top:1px solid var(--line);font-size:14px}
+.logged li b{font:600 16px var(--cond)} .logged li span{color:var(--ink-2)} .logged li .h{grid-row:1/3;grid-column:2;font:700 17px var(--cond);color:var(--ink);align-self:center}
+.logged .sum{font-weight:600;font-size:15px}
 .clear{border:0;background:none;color:var(--ink-2);text-decoration:underline;font-size:14px;padding:0;justify-self:start;cursor:pointer}
 .bhead{display:flex;justify-content:space-between;align-items:center}
 .bhead b{font:700 19px/1 var(--cond)}
@@ -115,6 +126,7 @@ input.other{border:2px solid var(--orange);font-size:17px}
     </div>
 
     <h2><span data-t="worked_on">What you worked on</span> <span style="font:400 14px var(--body)" data-t="fill_only">(fill in only the tasks you did)</span></h2>
+    <div class="card logged" id="logged" hidden></div>
     <div id="blocks"></div>
 
     <div class="total"><span id="totalNote">Total hours</span><b id="total">0.00</b></div>
@@ -138,8 +150,8 @@ input.other{border:2px solid var(--orange);font-size:17px}
       <div><div class="big" id="doneHours">0.00</div><div style="color:var(--ink-2)" data-t="hours_submitted">hours submitted</div></div>
       <ul id="doneList"></ul>
       <div class="state" id="doneState"></div>
-      <button class="btn dark" id="nextWorker" type="button" data-t="next_worker">Next worker</button>
-      <button class="link" id="addMore" type="button" data-t="add_more">Forgot something? Add more hours for this day</button>
+      <button class="btn dark" id="nextWorker" type="button" data-t="done_btn">Done</button>
+      <button class="btn" id="addMore" type="button" data-t="log_another">+ Log another task</button>
     </div>
   </div>
 </main>
@@ -188,10 +200,10 @@ const T = {
   en: {
     app_sub: 'my hours', name: 'Your name', required: 'Required', day: 'Day worked',
     worked_on: 'What you worked on', fill_only: '(fill in only the tasks you did)',
-    total_hours: 'Total hours', total_usual: 'Total hours (usual day {0})', total: 'Total',
+    total_hours: 'Total hours today', total_usual: 'Total hours today (usual day {0})', total: 'Total',
     notes: 'Notes', optional: 'optional', notes_ph: 'Anything the office should know',
     submit_mine: 'Submit my hours', sent_from: 'Sent from this phone',
-    done_today: '{0}, done for today', done_day: '{0}, done for {1}', hours_submitted: 'hours submitted',
+    done_today: '{0}, saved', done_day: '{0}, saved for {1}', hours_submitted: 'hours logged today so far',
     next_worker: 'Next worker', add_more: 'Forgot something? Add more hours for this day',
     check_hours: 'Check your hours', submit: 'Submit', go_back: 'Go back and fix',
     connect_once: 'Connect once to load names', pick_name: 'Tap to pick your name',
@@ -199,7 +211,7 @@ const T = {
     project: 'Project', pick_project: 'Pick project', station: 'Station', pick_station: 'Pick station',
     pick_project_first: 'Pick project first', type_project: 'Type the project name', type_station: 'Type what you worked on',
     start_time: 'Start time', end_time: 'End time', start: 'Start', end: 'End',
-    end_after: 'End time has to be after start time.', ot_incl: 'incl. {0} OT', ot_line: 'Regular {0} hrs + Overtime {1} hrs (after 4 PM, over 8 hrs)', lunch: 'Lunch', lunch_note: 'Lunch 11:30–12:30 is not counted.', clear_task: 'Clear this task', other: 'OTHER',
+    end_after: 'End time has to be after start time.', logged_title: 'Already logged for this day', logged_sum: 'Logged so far: {0} hrs', logged_hint: 'Grey tasks are already logged. Add what you did next below them.', logged_tag: 'already logged', done_btn: 'Done', log_another: '+ Log another task', ot_incl: 'incl. {0} OT', ot_line: 'Regular {0} hrs + Overtime {1} hrs (after 4 PM, over 8 hrs)', lunch: 'Lunch', lunch_note: 'Lunch 11:30–12:30 is not counted.', clear_task: 'Clear this task', other: 'OTHER',
     e_name: 'Pick your name first. It’s required.', e_task1: 'Fill in task 1: project, station, start and end.',
     e_project: 'Task {0}: pick a project.', e_project_other: 'Task {0}: type the project name in the orange box.',
     e_station: 'Task {0}: pick a station.', e_station_other: 'Task {0}: type what you worked on in the orange box.',
@@ -215,10 +227,10 @@ const T = {
   vi: {
     app_sub: 'giờ làm của tôi', name: 'Tên của bạn', required: 'Bắt buộc', day: 'Ngày làm việc',
     worked_on: 'Công việc đã làm', fill_only: '(chỉ điền những việc bạn đã làm)',
-    total_hours: 'Tổng số giờ', total_usual: 'Tổng số giờ (ngày thường {0} giờ)', total: 'Tổng',
+    total_hours: 'Tổng giờ hôm nay', total_usual: 'Tổng giờ hôm nay (ngày thường {0} giờ)', total: 'Tổng',
     notes: 'Ghi chú', optional: 'không bắt buộc', notes_ph: 'Điều văn phòng cần biết',
     submit_mine: 'Gửi giờ làm', sent_from: 'Đã gửi từ điện thoại này',
-    done_today: '{0}, đã xong hôm nay', done_day: '{0}, đã xong ngày {1}', hours_submitted: 'giờ đã gửi',
+    done_today: '{0}, đã lưu', done_day: '{0}, đã lưu cho ngày {1}', hours_submitted: 'giờ đã ghi trong ngày',
     next_worker: 'Người tiếp theo', add_more: 'Quên gì không? Thêm giờ cho ngày này',
     check_hours: 'Kiểm tra giờ làm', submit: 'Gửi', go_back: 'Quay lại sửa',
     connect_once: 'Cần có mạng một lần để tải danh sách tên', pick_name: 'Chạm để chọn tên',
@@ -226,7 +238,7 @@ const T = {
     project: 'Dự án', pick_project: 'Chọn dự án', station: 'Công đoạn', pick_station: 'Chọn công đoạn',
     pick_project_first: 'Chọn dự án trước', type_project: 'Nhập tên dự án', type_station: 'Nhập việc bạn đã làm',
     start_time: 'Giờ bắt đầu', end_time: 'Giờ kết thúc', start: 'Bắt đầu', end: 'Kết thúc',
-    end_after: 'Giờ kết thúc phải sau giờ bắt đầu.', ot_incl: 'gồm {0} giờ tăng ca', ot_line: 'Giờ thường {0} + Tăng ca {1} giờ (sau 4 giờ chiều, quá 8 giờ)', lunch: 'Nghỉ trưa', lunch_note: 'Giờ nghỉ trưa 11:30–12:30 không được tính.', clear_task: 'Xóa việc này', other: 'KHÁC',
+    end_after: 'Giờ kết thúc phải sau giờ bắt đầu.', logged_title: 'Đã ghi cho ngày này', logged_sum: 'Đã ghi: {0} giờ', logged_hint: 'Việc màu xám là đã ghi. Thêm việc bạn làm tiếp theo ở bên dưới.', logged_tag: 'đã ghi', done_btn: 'Xong', log_another: '+ Ghi thêm việc khác', ot_incl: 'gồm {0} giờ tăng ca', ot_line: 'Giờ thường {0} + Tăng ca {1} giờ (sau 4 giờ chiều, quá 8 giờ)', lunch: 'Nghỉ trưa', lunch_note: 'Giờ nghỉ trưa 11:30–12:30 không được tính.', clear_task: 'Xóa việc này', other: 'KHÁC',
     e_name: 'Vui lòng chọn tên trước. Mục này bắt buộc.', e_task1: 'Điền việc 1: dự án, công đoạn, giờ bắt đầu và kết thúc.',
     e_project: 'Việc {0}: chọn dự án.', e_project_other: 'Việc {0}: nhập tên dự án vào ô màu cam.',
     e_station: 'Việc {0}: chọn công đoạn.', e_station_other: 'Việc {0}: nhập việc đã làm vào ô màu cam.',
@@ -242,10 +254,10 @@ const T = {
   es: {
     app_sub: 'mis horas', name: 'Su nombre', required: 'Obligatorio', day: 'Día trabajado',
     worked_on: 'En qué trabajó', fill_only: '(llene solo las tareas que hizo)',
-    total_hours: 'Total de horas', total_usual: 'Total de horas (día normal {0})', total: 'Total',
+    total_hours: 'Total de horas hoy', total_usual: 'Total de horas hoy (día normal {0})', total: 'Total',
     notes: 'Notas', optional: 'opcional', notes_ph: 'Algo que la oficina deba saber',
     submit_mine: 'Enviar mis horas', sent_from: 'Enviado desde este teléfono',
-    done_today: '{0}, listo por hoy', done_day: '{0}, listo para el {1}', hours_submitted: 'horas enviadas',
+    done_today: '{0}, guardado', done_day: '{0}, guardado para el {1}', hours_submitted: 'horas registradas hoy hasta ahora',
     next_worker: 'Siguiente trabajador', add_more: '¿Olvidó algo? Agregue más horas para este día',
     check_hours: 'Revise sus horas', submit: 'Enviar', go_back: 'Regresar y corregir',
     connect_once: 'Conéctese una vez para cargar los nombres', pick_name: 'Toque para elegir su nombre',
@@ -253,7 +265,7 @@ const T = {
     project: 'Proyecto', pick_project: 'Elija proyecto', station: 'Estación', pick_station: 'Elija estación',
     pick_project_first: 'Primero elija proyecto', type_project: 'Escriba el nombre del proyecto', type_station: 'Escriba en qué trabajó',
     start_time: 'Hora de inicio', end_time: 'Hora final', start: 'Inicio', end: 'Final',
-    end_after: 'La hora final debe ser después de la hora de inicio.', ot_incl: 'incl. {0} h extra', ot_line: 'Regular {0} h + Tiempo extra {1} h (después de las 4 PM, más de 8 h)', lunch: 'Almuerzo', lunch_note: 'El almuerzo de 11:30 a 12:30 no se cuenta.', clear_task: 'Borrar esta tarea', other: 'OTRO',
+    end_after: 'La hora final debe ser después de la hora de inicio.', logged_title: 'Ya registrado para este día', logged_sum: 'Registrado hasta ahora: {0} h', logged_hint: 'Las tareas en gris ya están registradas. Agregue lo que hizo después, debajo.', logged_tag: 'ya registrado', done_btn: 'Listo', log_another: '+ Registrar otra tarea', ot_incl: 'incl. {0} h extra', ot_line: 'Regular {0} h + Tiempo extra {1} h (después de las 4 PM, más de 8 h)', lunch: 'Almuerzo', lunch_note: 'El almuerzo de 11:30 a 12:30 no se cuenta.', clear_task: 'Borrar esta tarea', other: 'OTRO',
     e_name: 'Primero elija su nombre. Es obligatorio.', e_task1: 'Llene la tarea 1: proyecto, estación, inicio y final.',
     e_project: 'Tarea {0}: elija un proyecto.', e_project_other: 'Tarea {0}: escriba el nombre del proyecto en el cuadro naranja.',
     e_station: 'Tarea {0}: elija una estación.', e_station_other: 'Tarea {0}: escriba en qué trabajó en el cuadro naranja.',
@@ -327,9 +339,9 @@ async function fetchLists() {
 }
 function timeOptions(value, placeholder, which) {
   return '<option value="">' + placeholder + '</option>' + TIMES.map(tm => {
-    const l = inLunch(tm, which);
-    return '<option value="' + tm + '"' + (tm === value && !l ? ' selected' : '') + (l ? ' disabled style="color:#9aa5a6;background:#E7EBEA"' : '') + '>' +
-      tLabel(tm) + (l ? '  —  ' + t('lunch') : '') + '</option>';
+    const l = inLunch(tm, which), g = !l && inLogged(tm, which), off = l || g;
+    return '<option value="' + tm + '"' + (tm === value && !off ? ' selected' : '') + (off ? ' disabled style="color:#9aa5a6;background:#E7EBEA"' : '') + '>' +
+      tLabel(tm) + (l ? '  —  ' + t('lunch') : g ? '  —  ' + t('logged_tag') : '') + '</option>';
   }).join('');
 }
 function options(items, value, placeholder, labelFn) {
@@ -355,6 +367,51 @@ function workerOptions(v) {
 function markEmpty() { document.querySelectorAll('select').forEach(s => s.classList.toggle('empty', !s.value)); }
 const stationsFor = p => lists.stations.filter(s => s.projects === 'All' || (Array.isArray(s.projects) && s.projects.includes(p)));
 
+/* ---------- already-logged hours for the picked worker + day ---------- */
+let dayLogged = [];     // [{id, start:'HH:MM', end:'HH:MM', project, station}]
+let dayKey = '';
+function localDay(key) { return (done[key] || []).flatMap(s => s.entries.map(e => ({ id: e.id, start: e.start, end: e.end, project: e.project, station: e.station }))); }
+async function refreshLogged() {
+  const w = $('#worker').value, d = $('#date').value, key = w + '|' + d;
+  dayKey = key;
+  if (!w) { dayLogged = []; renderLogged(); return; }
+  let list = localDay(key);
+  renderLoggedFrom(list, key);
+  if (navigator.onLine && !WH.includes('PASTE')) {
+    try {
+      const j = await (await fetch(WH + '?action=day&worker=' + encodeURIComponent(w) + '&date=' + d)).json();
+      if (j.ok && dayKey === key) {
+        const ids = new Set(j.entries.map(e => e.id));
+        list = j.entries.concat(list.filter(e => !ids.has(e.id)));   // Sheet + anything still waiting on this phone
+        renderLoggedFrom(list, key);
+      }
+    } catch (e) {}
+  }
+}
+function renderLoggedFrom(list, key) {
+  if (dayKey !== key) return;
+  dayLogged = list.slice().sort((a, b) => mins(a.start) - mins(b.start));
+  renderLogged();
+  // task 1 starts where the last logged task ended
+  if (!usedRows().length) {
+    const lastEnd = dayLogged.length ? dayLogged.map(e => e.end).sort().pop() : null;
+    blocks = emptyRows(lastEnd ? (inLunch(lastEnd, 'start') ? LUNCH[1] : lastEnd) : null);
+  }
+  renderBlocks();
+}
+function renderLogged() {
+  const el = $('#logged'); el.hidden = true; return;   // logged tasks now show as greyed task cards in the list
+  if (!dayLogged.length) { el.hidden = true; return; }
+  const ot = dayOT(dayLogged), tot = dayLogged.reduce((a, e) => a + hrsOf(e.start, e.end), 0);
+  el.innerHTML = '<h3>✓ ' + t('logged_title') + '</h3><ul>' + dayLogged.map((e, i) =>
+    '<li><b>' + esc(e.station) + otTag(ot[i].ot) + '</b><span class="h">' + hrsOf(e.start, e.end).toFixed(2) + '</span><span>' + esc(e.project) + ', ' + tLabel(e.start) + ' – ' + tLabel(e.end) + '</span></li>').join('') +
+    '</ul><div class="sum">' + t('logged_sum', tot.toFixed(2)) + '</div><div style="font-size:14px;color:var(--ink-2)">' + t('logged_hint') + '</div>';
+  el.hidden = false;
+}
+// is this time inside something already logged? (start: [a, z)  end: (a, z])
+const inLogged = (tm, which) => dayLogged.some(e => which === 'start' ? (mins(tm) >= mins(e.start) && mins(tm) < mins(e.end))
+                                                                       : (mins(tm) > mins(e.start) && mins(tm) <= mins(e.end)));
+
 /* ---------- 5 fixed task rows ---------- */
 const ROWS = 5;
 function emptyRows(startAt) {
@@ -363,12 +420,23 @@ function emptyRows(startAt) {
 const used = b => !!(b.project || b.station || b.end);   // a start time alone (pre-filled) doesn't count
 const usedRows = () => blocks.filter(used);
 function renderBlocks() {
-  $('#blocks').innerHTML = blocks.map((b, i) => {
+  const L = dayLogged.length;
+  // OT for the whole day: logged tasks + anything filled in now (same rule as the Sheet)
+  const fresh = blocks.map((b, i) => ({ i, b })).filter(x => x.b.start && x.b.end && blockHrs(x.b) > 0);
+  const otAll = dayOT(dayLogged.concat(fresh.map(x => x.b)));
+  const otNew = {}; fresh.forEach((x, k) => otNew[x.i] = otAll[L + k].ot);
+  const lockSel = v => '<select disabled><option>' + esc(v) + '</option></select>';
+  const loggedHtml = L ? '<div class="lghint">✓ ' + t('logged_hint') + '</div>' + dayLogged.map((e, i) =>
+    '<div class="block lg"><div class="bhead"><b>' + (i + 1) + '. ' + t('task') + '<span class="lgtag">✓ ' + t('logged_tag') + '</span>' + otTag(otAll[i].ot) + '</b>' +
+    '<span class="hrs">' + hrsOf(e.start, e.end).toFixed(2) + ' ' + t('hrs') + '</span></div>' +
+    '<label>' + t('project') + lockSel(e.project) + '</label><label>' + t('station') + lockSel(e.station) + '</label>' +
+    '<div class="two"><label>' + t('start_time') + lockSel(tLabel(e.start)) + '</label><label>' + t('end_time') + lockSel(tLabel(e.end)) + '</label></div></div>').join('') : '';
+  $('#blocks').innerHTML = loggedHtml + blocks.map((b, i) => {
     const st = stationsFor(b.project).map(x => x.name).sort((a, c) => (isOther(a) - isOther(c)) || az(stationLabel(a), stationLabel(c)));
     const s = lists.stations.find(x => x.name === b.station);
     const h = blockHrs(b), u = used(b), bad = b.start && b.end && !h;
     return '<div class="block' + (u ? '' : ' idle') + (bad ? ' bad' : '') + '" data-i="' + i + '">' +
-      '<div class="bhead"><b>' + (i + 1) + '. ' + t('task') + (i ? '<span class="opt">' + t('optional') + '</span>' : '') +
+      '<div class="bhead"><b>' + (L + i + 1) + '. ' + t('task') + (i ? '<span class="opt">' + t('optional') + '</span>' : '') + otTag(otNew[i] || 0) +
       (s ? '<span class="cat ' + catClass(s.category) + '">' + esc(t(s.category)) + '</span>' : '') + '</b>' +
       '<span class="hrs">' + (h ? h.toFixed(2) + ' ' + t('hrs') : '–') + '</span></div>' +
       '<label>' + t('project') + '<select data-f="project">' + options(lists.projects.map(p => p.name), b.project, t('pick_project'), projectLabel) + '</select></label>' +
@@ -384,7 +452,7 @@ function renderBlocks() {
   renderTotal(); markEmpty();
 }
 function renderTotal() {
-  const tot = usedRows().reduce((a, b) => a + blockHrs(b), 0);
+  const tot = usedRows().reduce((a, b) => a + blockHrs(b), 0) + dayLogged.reduce((a, e) => a + hrsOf(e.start, e.end), 0);
   $('#total').textContent = tot.toFixed(2);
   const w = lists.workers.find(x => x.name === $('#worker').value);
   $('#totalNote').textContent = w ? t('total_usual', w.std) : t('total_hours');
@@ -417,7 +485,7 @@ function problems() {
   if (!$('#worker').value) { $('#worker').classList.add('need'); window.scrollTo(0, 0); return t('e_name'); }
   if (!usedRows().length) return t('e_task1');
   for (let i = 0; i < blocks.length; i++) {
-    const b = blocks[i], n = i + 1;
+    const b = blocks[i], n = dayLogged.length + i + 1;
     if (!used(b)) continue;
     if (!b.project) return t('e_project', n);
     if (isOther(b.project) && !(b.projectOther || '').trim()) return t('e_project_other', n);
@@ -427,10 +495,9 @@ function problems() {
     if (!blockHrs(b)) return t('e_order', n);
   }
   const s = blocks.map((b, i) => ({ i, u: used(b), a: mins(b.start || '00:00'), z: mins(b.end || '00:00') })).filter(x => x.u).sort((x, y) => x.a - y.a);
-  for (let k = 1; k < s.length; k++) if (s[k].a < s[k - 1].z) return t('e_overlap', s[k].i + 1, s[k - 1].i + 1);
-  // overlap with anything already submitted for this day on this phone
-  const prev = (done[$('#worker').value + '|' + $('#date').value] || []).flatMap(x => x.entries);
-  for (const b of usedRows()) for (const p of prev)
+  for (let k = 1; k < s.length; k++) if (s[k].a < s[k - 1].z) return t('e_overlap', dayLogged.length + s[k].i + 1, dayLogged.length + s[k - 1].i + 1);
+  // overlap with anything already logged for this day (Sheet + this phone)
+  for (const b of usedRows()) for (const p of dayLogged)
     if (mins(b.start) < mins(p.end) && mins(b.end) > mins(p.start)) return t('e_overlap_prev', tLabel(b.start) + '–' + tLabel(b.end), tLabel(p.start) + '–' + tLabel(p.end));
   return '';
 }
@@ -438,10 +505,10 @@ function openReview() {
   const p = problems(); if (p) { toast(p); return; }
   const w = $('#worker').value, t2 = usedRows().reduce((a, b) => a + blockHrs(b), 0);
   const std = (lists.workers.find(x => x.name === w) || {}).std || 8;
-  const prevT = (done[w + '|' + $('#date').value] || []).reduce((a, s) => a + s.total, 0);
+  const prevT = dayLogged.reduce((a, e) => a + hrsOf(e.start, e.end), 0);
   $('#reviewWho').textContent = w + ', ' + dLabel($('#date').value);
   const cur = usedRows().sort((a, b) => mins(a.start) - mins(b.start));
-  const prevE = (done[w + '|' + $('#date').value] || []).flatMap(x => x.entries);
+  const prevE = dayLogged;
   const ot = dayOT(prevE.concat(cur)).slice(prevE.length), otSum = ot.reduce((a, x) => a + x.ot, 0);
   $('#reviewList').innerHTML = cur.map((b, i) =>
     '<li><b>' + esc(savedLabel(stName(b), stationLabel)) + otTag(ot[i].ot) + '</b><span class="h">' + blockHrs(b).toFixed(2) + '</span><span>' + esc(savedLabel(projName(b), projectLabel)) + ', ' + tLabel(b.start) + ' – ' + tLabel(b.end) + '</span></li>').join('') +
@@ -467,6 +534,7 @@ function submitDay() {
   (done[key] = done[key] || []).push(sub); pruneDone(); save('done', done);
   last.worker = w; save('last', last);
   queue.push({ type: 'submit', submission: sub }); save('queue', queue);
+  dayLogged = dayLogged.concat(sub.entries.map(e => ({ id: e.id, start: e.start, end: e.end, project: e.project, station: e.station })));
   $('#reviewModal').classList.remove('on');
   showDone(key); flush();
 }
@@ -477,21 +545,22 @@ function pruneDone() { // keep 21 days on the phone
 
 /* ---------- screens ---------- */
 function showForm(keepWorker) {
-  if (!keepWorker) $('#worker').value = '';
-  const key = $('#worker').value + '|' + $('#date').value, prev = (done[key] || []).flatMap(s => s.entries);
-  const lastEnd = prev.length ? prev.map(e => e.end).sort().pop() : null;
+  if (!keepWorker) { $('#worker').value = ''; dayLogged = []; }
+  const lastEnd = dayLogged.length ? dayLogged.map(e => e.end).sort().pop() : null;
   blocks = emptyRows(lastEnd && inLunch(lastEnd, 'start') ? LUNCH[1] : lastEnd);
+  renderLogged();
   $('#notes').value = '';
   $('#doneView').hidden = true; $('#formView').hidden = false;
   renderBlocks(); renderHistory(); markEmpty(); window.scrollTo(0, 0);
 }
 function showDone(key) {
-  const subs = done[key] || []; if (!subs.length) return showForm(true);
-  const [w, d] = key.split('|'), entries = subs.flatMap(s => s.entries).sort((a, b) => mins(a.start) - mins(b.start));
+  const [w, d] = key.split('|'), entries = dayLogged.slice().sort((a, b) => mins(a.start) - mins(b.start));
+  if (!entries.length) return showForm(true);
   const isToday = d === ymd(new Date());
   $('#doneTitle').textContent = isToday ? t('done_today', w) : t('done_day', w, dLabel(d));
-  $('#doneHours').textContent = subs.reduce((a, s) => a + s.total, 0).toFixed(2);
-  const ot = dayOT(entries), otSum = ot.reduce((a, x) => a + x.ot, 0), totAll = subs.reduce((a, s) => a + s.total, 0);
+  const totAll = entries.reduce((a, e) => a + hrsOf(e.start, e.end), 0);
+  $('#doneHours').textContent = totAll.toFixed(2);
+  const ot = dayOT(entries), otSum = ot.reduce((a, x) => a + x.ot, 0);
   $('#doneList').innerHTML = entries.map((e, i) => '<li><b>' + esc(savedLabel(e.station, stationLabel)) + otTag(ot[i].ot) + '</b><span class="h">' + hrsOf(e.start, e.end).toFixed(2) + '</span><span>' +
     esc(savedLabel(e.project, projectLabel)) + ', ' + tLabel(e.start) + ' – ' + tLabel(e.end) + '</span></li>').join('') +
     (otSum > 0 ? '<li style="display:block;color:var(--ink-2)">' + t('ot_line', (totAll - otSum).toFixed(2), otSum.toFixed(2)) + '</li>' : '');
@@ -507,9 +576,9 @@ function renderDoneState(key) {
   el.textContent = waiting ? t('st_wait') : t('st_ok');
 }
 function checkDone() {
-  const key = $('#worker').value + '|' + $('#date').value;
-  if ($('#worker').value && done[key] && done[key].length) showDone(key);
-  else { renderTotal(); markEmpty(); }
+  if (!$('#doneView').hidden) { $('#doneView').hidden = true; $('#formView').hidden = false; }
+  if (!usedRows().length) blocks = emptyRows();   // keep anything already filled in
+  renderBlocks(); refreshLogged();
 }
 function renderHistory() {
   const ids = new Set(queue.map(q => q.submission.id));
@@ -551,14 +620,14 @@ $('#date').addEventListener('change', () => { if (!$('#doneView').hidden) showFo
 $('#lang').addEventListener('click', e => {
   const b = e.target.closest('[data-lang]'); if (!b) return;
   lang = b.dataset.lang; save('lang', lang); applyLang();
-  renderTop(); renderBlocks(); renderHistory(); renderSync();
+  renderTop(); renderBlocks(); renderLogged(); renderHistory(); renderSync();
   if (!$('#doneView').hidden) showDone($('#worker').value + '|' + $('#date').value);
 });
 $('#reviewBtn').addEventListener('click', openReview);
 $('#submitBtn').addEventListener('click', submitDay);
 $('#editBtn').addEventListener('click', () => $('#reviewModal').classList.remove('on'));
 $('#nextWorker').addEventListener('click', () => { $('#date').value = ymd(new Date()); showForm(false); });
-$('#addMore').addEventListener('click', () => showForm(true));
+$('#addMore').addEventListener('click', () => { showForm(true); setTimeout(() => $('#blocks').scrollIntoView({ behavior: 'smooth' }), 50); });
 window.addEventListener('online', flush);
 window.addEventListener('offline', renderSync);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) flush(); });
