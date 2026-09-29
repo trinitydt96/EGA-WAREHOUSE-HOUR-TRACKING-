@@ -180,7 +180,8 @@ const save = (k, v) => { try { localStorage.setItem(K(k), JSON.stringify(v)); } 
 let lists = load('lists', { workers: [], projects: [], stations: [] });
 // A–Z everywhere: projects, stations, and names inside each division (divisions keep the WORKERS tab order)
 const az = (a, b) => String(a).localeCompare(String(b), 'en', { sensitivity: 'base', numeric: true });
-const isOther = n => /^other\b/i.test(String(n || '').trim());
+// only a plain OTHER (optionally numbered, e.g. "OTHER (25)") opens the type-in box — not "OTHER CUSTOM REQUEST"
+const isOther = n => /^other(\s*\(\d+\))?$/i.test(String(n || '').trim());
 const azO = (a, b) => (isOther(a) - isOther(b)) || az(a, b);   // A–Z, with OTHER at the bottom
 function sortLists() { (lists.projects || []).sort((a, b) => azO(a.name, b.name)); (lists.stations || []).sort((a, b) => azO(a.name, b.name)); }
 // what gets saved: "OTHER - whatever they typed"
