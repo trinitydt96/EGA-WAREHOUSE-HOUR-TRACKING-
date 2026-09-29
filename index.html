@@ -199,7 +199,7 @@ const T = {
     project: 'Project', pick_project: 'Pick project', station: 'Station', pick_station: 'Pick station',
     pick_project_first: 'Pick project first', type_project: 'Type the project name', type_station: 'Type what you worked on',
     start_time: 'Start time', end_time: 'End time', start: 'Start', end: 'End',
-    end_after: 'End time has to be after start time.', lunch: 'Lunch', lunch_note: 'Lunch 11:30–12:30 is not counted.', clear_task: 'Clear this task', other: 'OTHER',
+    end_after: 'End time has to be after start time.', ot_incl: 'incl. {0} OT', ot_line: 'Regular {0} hrs + Overtime {1} hrs (after 4 PM, over 8 hrs)', lunch: 'Lunch', lunch_note: 'Lunch 11:30–12:30 is not counted.', clear_task: 'Clear this task', other: 'OTHER',
     e_name: 'Pick your name first. It’s required.', e_task1: 'Fill in task 1: project, station, start and end.',
     e_project: 'Task {0}: pick a project.', e_project_other: 'Task {0}: type the project name in the orange box.',
     e_station: 'Task {0}: pick a station.', e_station_other: 'Task {0}: type what you worked on in the orange box.',
@@ -226,7 +226,7 @@ const T = {
     project: 'Dự án', pick_project: 'Chọn dự án', station: 'Công đoạn', pick_station: 'Chọn công đoạn',
     pick_project_first: 'Chọn dự án trước', type_project: 'Nhập tên dự án', type_station: 'Nhập việc bạn đã làm',
     start_time: 'Giờ bắt đầu', end_time: 'Giờ kết thúc', start: 'Bắt đầu', end: 'Kết thúc',
-    end_after: 'Giờ kết thúc phải sau giờ bắt đầu.', lunch: 'Nghỉ trưa', lunch_note: 'Giờ nghỉ trưa 11:30–12:30 không được tính.', clear_task: 'Xóa việc này', other: 'KHÁC',
+    end_after: 'Giờ kết thúc phải sau giờ bắt đầu.', ot_incl: 'gồm {0} giờ tăng ca', ot_line: 'Giờ thường {0} + Tăng ca {1} giờ (sau 4 giờ chiều, quá 8 giờ)', lunch: 'Nghỉ trưa', lunch_note: 'Giờ nghỉ trưa 11:30–12:30 không được tính.', clear_task: 'Xóa việc này', other: 'KHÁC',
     e_name: 'Vui lòng chọn tên trước. Mục này bắt buộc.', e_task1: 'Điền việc 1: dự án, công đoạn, giờ bắt đầu và kết thúc.',
     e_project: 'Việc {0}: chọn dự án.', e_project_other: 'Việc {0}: nhập tên dự án vào ô màu cam.',
     e_station: 'Việc {0}: chọn công đoạn.', e_station_other: 'Việc {0}: nhập việc đã làm vào ô màu cam.',
@@ -253,7 +253,7 @@ const T = {
     project: 'Proyecto', pick_project: 'Elija proyecto', station: 'Estación', pick_station: 'Elija estación',
     pick_project_first: 'Primero elija proyecto', type_project: 'Escriba el nombre del proyecto', type_station: 'Escriba en qué trabajó',
     start_time: 'Hora de inicio', end_time: 'Hora final', start: 'Inicio', end: 'Final',
-    end_after: 'La hora final debe ser después de la hora de inicio.', lunch: 'Almuerzo', lunch_note: 'El almuerzo de 11:30 a 12:30 no se cuenta.', clear_task: 'Borrar esta tarea', other: 'OTRO',
+    end_after: 'La hora final debe ser después de la hora de inicio.', ot_incl: 'incl. {0} h extra', ot_line: 'Regular {0} h + Tiempo extra {1} h (después de las 4 PM, más de 8 h)', lunch: 'Almuerzo', lunch_note: 'El almuerzo de 11:30 a 12:30 no se cuenta.', clear_task: 'Borrar esta tarea', other: 'OTRO',
     e_name: 'Primero elija su nombre. Es obligatorio.', e_task1: 'Llene la tarea 1: proyecto, estación, inicio y final.',
     e_project: 'Tarea {0}: elija un proyecto.', e_project_other: 'Tarea {0}: escriba el nombre del proyecto en el cuadro naranja.',
     e_station: 'Tarea {0}: elija una estación.', e_station_other: 'Tarea {0}: escriba en qué trabajó en el cuadro naranja.',
@@ -298,6 +298,17 @@ const hrsOf = (a, z) => (a && z && mins(z) > mins(a)) ? (mins(z) - mins(a) - lun
 const hasLunch = (a, z) => a && z && mins(z) > mins(a) && lunchOverlap(mins(a), mins(z)) > 0;
 const inLunch = (tm, which) => which === 'start' ? (mins(tm) >= mins(LUNCH[0]) && mins(tm) < mins(LUNCH[1]))
                                                  : (mins(tm) > mins(LUNCH[0]) && mins(tm) <= mins(LUNCH[1]));
+/* daily overtime: time after 4 PM that takes the day over 8 hrs, charged to the last task(s) of the day (same rule as the Sheet) */
+const DAY_OT_AFTER_HRS = 8, DAY_OT_CLOCK = '16:00';
+function dayOT(list) { // list of {start,end} (HH:MM) -> same order [{reg, ot}]
+  const clock = mins(DAY_OT_CLOCK); let total = 0, after = 0;
+  const info = list.map((e, i) => { const h = hrsOf(e.start, e.end), af = Math.max(0, mins(e.end) - Math.max(mins(e.start), clock)) / 60; total += h; after += af; return { i, z: mins(e.end), af, h }; });
+  let rem = Math.min(after, Math.max(0, total - DAY_OT_AFTER_HRS));
+  const res = info.map(x => ({ reg: x.h, ot: 0 }));
+  info.slice().sort((a, b) => b.z - a.z).forEach(x => { if (rem <= 0) return; const take = Math.min(rem, x.af, x.h); res[x.i] = { reg: x.h - take, ot: take }; rem -= take; });
+  return res;
+}
+const otTag = ot => ot > 0 ? ' <span style="color:var(--red);font:600 14px var(--cond)">' + t('ot_incl', ot.toFixed(2)) + '</span>' : '';
 const blockHrs = b => (b.start && b.end && mins(b.end) > mins(b.start)) ? hrsOf(b.start, b.end) : 0;
 function toast(m) { const t = $('#toast'); t.textContent = m; t.classList.add('on'); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('on'), 2600); }
 
@@ -429,8 +440,12 @@ function openReview() {
   const std = (lists.workers.find(x => x.name === w) || {}).std || 8;
   const prevT = (done[w + '|' + $('#date').value] || []).reduce((a, s) => a + s.total, 0);
   $('#reviewWho').textContent = w + ', ' + dLabel($('#date').value);
-  $('#reviewList').innerHTML = usedRows().sort((a, b) => mins(a.start) - mins(b.start)).map(b =>
-    '<li><b>' + esc(savedLabel(stName(b), stationLabel)) + '</b><span class="h">' + blockHrs(b).toFixed(2) + '</span><span>' + esc(savedLabel(projName(b), projectLabel)) + ', ' + tLabel(b.start) + ' – ' + tLabel(b.end) + '</span></li>').join('');
+  const cur = usedRows().sort((a, b) => mins(a.start) - mins(b.start));
+  const prevE = (done[w + '|' + $('#date').value] || []).flatMap(x => x.entries);
+  const ot = dayOT(prevE.concat(cur)).slice(prevE.length), otSum = ot.reduce((a, x) => a + x.ot, 0);
+  $('#reviewList').innerHTML = cur.map((b, i) =>
+    '<li><b>' + esc(savedLabel(stName(b), stationLabel)) + otTag(ot[i].ot) + '</b><span class="h">' + blockHrs(b).toFixed(2) + '</span><span>' + esc(savedLabel(projName(b), projectLabel)) + ', ' + tLabel(b.start) + ' – ' + tLabel(b.end) + '</span></li>').join('') +
+    (otSum > 0 ? '<li style="display:block;color:var(--ink-2)">' + t('ot_line', (t2 - otSum).toFixed(2), otSum.toFixed(2)) + '</li>' : '');
   $('#reviewTotal').textContent = t2.toFixed(2) + ' ' + t('hrs');
   const all = t2 + prevT, warn = $('#reviewWarn');
   warn.hidden = Math.abs(all - std) < 0.01;
@@ -476,8 +491,10 @@ function showDone(key) {
   const isToday = d === ymd(new Date());
   $('#doneTitle').textContent = isToday ? t('done_today', w) : t('done_day', w, dLabel(d));
   $('#doneHours').textContent = subs.reduce((a, s) => a + s.total, 0).toFixed(2);
-  $('#doneList').innerHTML = entries.map(e => '<li><b>' + esc(savedLabel(e.station, stationLabel)) + '</b><span class="h">' + hrsOf(e.start, e.end).toFixed(2) + '</span><span>' +
-    esc(savedLabel(e.project, projectLabel)) + ', ' + tLabel(e.start) + ' – ' + tLabel(e.end) + '</span></li>').join('');
+  const ot = dayOT(entries), otSum = ot.reduce((a, x) => a + x.ot, 0), totAll = subs.reduce((a, s) => a + s.total, 0);
+  $('#doneList').innerHTML = entries.map((e, i) => '<li><b>' + esc(savedLabel(e.station, stationLabel)) + otTag(ot[i].ot) + '</b><span class="h">' + hrsOf(e.start, e.end).toFixed(2) + '</span><span>' +
+    esc(savedLabel(e.project, projectLabel)) + ', ' + tLabel(e.start) + ' – ' + tLabel(e.end) + '</span></li>').join('') +
+    (otSum > 0 ? '<li style="display:block;color:var(--ink-2)">' + t('ot_line', (totAll - otSum).toFixed(2), otSum.toFixed(2)) + '</li>' : '');
   renderDoneState(key);
   $('#formView').hidden = true; $('#doneView').hidden = false; window.scrollTo(0, 0);
 }
