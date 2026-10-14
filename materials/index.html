@@ -26,7 +26,7 @@ select{background-image:linear-gradient(45deg,transparent 50%,var(--mu) 50%),lin
 textarea{min-height:76px;resize:vertical}
 input:focus,select:focus,textarea:focus{outline:2px solid var(--div);outline-offset:1px}
 input[readonly]{color:var(--mu);background:var(--s1)}
-#fPo,#fDesc,#fColor,#fSize,#fVendor,#fShelf,#fNameOther,#fProjectOther{text-transform:uppercase}
+#fName,#fPo,#fDesc,#fColor,#fSize,#fVendor,#fShelf,#fProjectOther{text-transform:uppercase}
 .bad input,.bad select,.bad .types{outline:2px solid var(--red);outline-offset:1px}
 
 .hdr{position:sticky;top:0;z-index:20;background:rgba(14,17,22,.96);backdrop-filter:blur(8px);border-bottom:1px solid var(--bd);padding:10px 14px;display:flex;align-items:center;gap:10px}
@@ -137,8 +137,7 @@ input[readonly]{color:var(--mu);background:var(--s1)}
   <div class="card">
     <div class="f" id="wName">
       <label><span><span data-t="name"></span> <span class="req">*</span></span></label>
-      <select id="fName" onchange="onName()"></select>
-      <input id="fNameOther" class="other" autocapitalize="characters" data-ph="typeName">
+      <input id="fName" list="dlName" autocomplete="off" autocapitalize="characters" spellcheck="false" data-ph="typeName" oninput="onName()" onchange="onName()">
     </div>
     <div class="f">
       <label><span data-t="date"></span><span class="hint" data-t="auto"></span></label>
@@ -216,7 +215,7 @@ input[readonly]{color:var(--mu);background:var(--s1)}
   <div class="ver">EGA MATERIALS v2.0 · <span id="itemCount">0</span> <span data-t="partsLoaded"></span></div>
 </main>
 
-<datalist id="dlColor"></datalist><datalist id="dlSize"></datalist>
+<datalist id="dlName"></datalist><datalist id="dlColor"></datalist><datalist id="dlSize"></datalist>
 <datalist id="dlVendor"></datalist><datalist id="dlShelf"></datalist>
 
 <div class="foot"><button class="submit idle" id="submitBtn" onclick="submitEntry()"></button></div>
@@ -232,7 +231,7 @@ input[readonly]{color:var(--mu);background:var(--s1)}
  * CONFIG — paste the Apps Script /exec URL here after deploying.
  * Empty ("") = DEMO mode for review (nothing is saved).
  * ============================================================ */
-var WH = "https://script.google.com/macros/s/AKfycbyqrWE5gcHFqM4xvSDGYCDMaQWnAFTxHO2etvJCSvI_Ynx7Q0BrocrNntmjF9_bye0X/exec";
+var WH = "";
 var DEMO = !WH;
 
 /* Demo data = same 30 parts seedItems() loads into the Sheet */
@@ -347,7 +346,7 @@ var booting = true;
 function saveHeader(){
   if (booting){ renderSubmit(); return; }
   lsJsonSet("ega-mat-hdr", {day: todayIso(), div: div, type: type,
-    name: $("fName").value, nameOther: $("fNameOther").value,
+    name: $("fName").value,
     project: $("fProject").value, projectOther: $("fProjectOther").value,
     po: $("fPo").value, vendor: $("fVendor").value});
   renderSubmit();
@@ -396,18 +395,13 @@ function setDiv(d){
   fillProjects(); showInfo(); saveHeader();
 }
 function sortedUnique(arr){ return arr.filter(function(v,i){ return v && arr.indexOf(v)===i; }).sort(function(a,b){ return a.localeCompare(b); }); }
+/* Name is typed; names on the WORKERS list for this division show as suggestions */
 function fillNames(keep){
-  var sel = $("fName"), cur = keep !== undefined ? keep : sel.value;
   var names = sortedUnique(DATA.workers.filter(function(w){ return !div || !w.div || w.div===div; }).map(function(w){ return w.name; }));
-  sel.innerHTML = '<option value="">'+esc(t("pick"))+'</option>' +
-    names.map(function(n){ return '<option>'+esc(n)+'</option>'; }).join("") +
-    '<option value="__OTHER">'+esc(t("other"))+'</option>';
-  sel.value = (names.indexOf(cur) >= 0 || cur === "__OTHER") ? cur : "";
-  $("fNameOther").style.display = sel.value === "__OTHER" ? "block" : "none";
+  fillList("dlName", names);
+  if (keep !== undefined) $("fName").value = keep === "__OTHER" ? "" : keep;
 }
 function onName(){
-  $("fNameOther").style.display = $("fName").value === "__OTHER" ? "block" : "none";
-  if ($("fName").value === "__OTHER") $("fNameOther").focus();
   var m = lsJson("ega-mat-lastname", {}); m[div] = $("fName").value; lsJsonSet("ega-mat-lastname", m);
   clearBad("wName"); saveHeader();
 }
@@ -432,7 +426,7 @@ function setType(ty){
   document.documentElement.style.setProperty("--type", {IN:"var(--in)",OUT:"var(--out)",BALANCE:"var(--bal)"}[ty]);
   fillProjects(); clearBad("wType"); saveHeader();
 }
-function nameVal(){ return $("fName").value === "__OTHER" ? up($("fNameOther").value) : $("fName").value; }
+function nameVal(){ return up($("fName").value); }
 function projectVal(){ return $("fProject").value === "__OTHER" ? up($("fProjectOther").value) : $("fProject").value; }
 
 /* ============================================================
@@ -747,12 +741,12 @@ function toast(msg, kind){
   var h = lsJson("ega-mat-hdr", {});
   if (h.day !== todayIso()){ h.po = ""; h.vendor = ""; }
   $("fPo").value = h.po || ""; $("fVendor").value = h.vendor || "";
-  $("fNameOther").value = h.nameOther || ""; $("fProjectOther").value = h.projectOther || "";
+  $("fProjectOther").value = h.projectOther || "";
   if (h.type) setType(h.type);
   setDiv(h.div || "DIV.8");
   fillNames(h.name || ""); fillProjects();
   if (h.project) { $("fProject").value = h.project; onProject(); }
-  ["fNameOther","fProjectOther"].forEach(function(id){ $(id).addEventListener("input", saveHeader); });
+  $("fProjectOther").addEventListener("input", saveHeader);
   $("fDesc").addEventListener("input", function(){ clearBad("wDesc"); renderSubmit(); });
   $("fQty").addEventListener("input", function(){ clearBad("wQty"); });
   booting = false; saveHeader();
