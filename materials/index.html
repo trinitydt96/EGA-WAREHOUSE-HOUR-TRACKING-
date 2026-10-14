@@ -107,6 +107,12 @@ input[readonly]{color:var(--mu);background:var(--s1)}
 #reader{background:#000;min-height:240px}
 #reader video{width:100%!important;display:block}
 .camsheet .big{display:block;width:100%;padding:16px;font-size:16px;font-weight:800;background:var(--s3)}
+.camsheet .big.read{background:var(--div);color:#0E1116;font-size:17px}
+.camsheet .big:disabled{opacity:.6}
+.ocrst{padding:10px 16px;font-size:13px;color:var(--mu);min-height:20px}
+.ocrres{padding:0 12px 10px;display:flex;flex-wrap:wrap;gap:8px}
+.ocrres button{background:var(--s2);border:1px solid var(--bd2);border-radius:9px;padding:11px 14px;font-family:var(--mono);font-weight:800;font-size:15px}
+.pinfo .link{color:var(--in)}
 
 .toast{position:fixed;left:50%;top:66px;transform:translateX(-50%) translateY(-20px);background:var(--s3);border:1px solid var(--bd2);color:var(--tx);padding:12px 18px;border-radius:12px;font-weight:700;font-size:14px;z-index:90;opacity:0;transition:.25s;max-width:92vw;text-align:center;pointer-events:none}
 .toast.show{opacity:1;transform:translateX(-50%)}
@@ -222,6 +228,8 @@ input[readonly]{color:var(--mu);background:var(--s1)}
 
 <div class="mask" id="camMask"><div class="camsheet">
   <h3 data-t="scanTitle"></h3><div id="reader"></div>
+  <div class="ocrst" id="ocrSt"></div><div class="ocrres" id="ocrRes"></div>
+  <button class="big read" id="readBtn" onclick="readText()" data-t="readBtn"></button>
   <button class="big" onclick="closeCam()" data-t="cancel"></button>
 </div></div>
 <div class="toast" id="toast"></div>
@@ -274,7 +282,7 @@ var T = {
    type:"In / Out / Balance",IN:"IN",OUT:"OUT",BALANCE:"BALANCE",inSub:"into warehouse",outSub:"to project",balSub:"count on shelf",
    shelf:"Station / Shelf",notes:"Notes",pick:"— Select —",other:"OTHER (type it)",typeName:"Type your name",typeProject:"Type project name",
    submit:"SUBMIT",fill:"Fill in the red fields",today:"Today from this phone",partsLoaded:"parts loaded",
-   newPart:"New part — it will be added to the list",onHand:"On hand",scanTitle:"Point the camera at the QR label",cancel:"Cancel",
+   newPart:"New part — it will be added to the list",onHand:"On hand",scanTitle:"Scan the barcode — or aim at the printed part # and tap READ",readBtn:"Aa  READ PRINTED PART #",reading:"Reading…",ocrLoad:"First time: loading the text reader…",ocrNone:"No part # found. Move closer, hold steady, try again.",ocrPick:"Not in the list yet. Tap the right part #:",bcLink:"This barcode will be remembered for this part",bcNew:"New barcode — pick or type the part # once. Next time it fills in by itself.",read:"Read",cancel:"Cancel",
    sent:"SENT",waiting:"WAITING",failed:"FAILED",demoSt:"DEMO",noHist:"Nothing submitted yet today.",done:"Saved!",
    queued:"Saved on phone — will send when signal returns",camErr:"Camera blocked. Allow the camera in browser settings.",
    demo:"DEMO MODE — not connected to the Google Sheet. Nothing is saved.",waitN:" waiting to send",updated:"List updated",
@@ -285,7 +293,7 @@ var T = {
    type:"Nhập / Xuất / Tồn kho",IN:"NHẬP",OUT:"XUẤT",BALANCE:"TỒN KHO",inSub:"vào kho",outSub:"ra dự án",balSub:"đếm trên kệ",
    shelf:"Trạm / Kệ",notes:"Ghi chú",pick:"— Chọn —",other:"KHÁC (tự gõ)",typeName:"Gõ tên của bạn",typeProject:"Gõ tên dự án",
    submit:"GỬI",fill:"Điền các ô màu đỏ",today:"Hôm nay trên điện thoại này",partsLoaded:"vật tư",
-   newPart:"Vật tư mới — sẽ được thêm vào danh sách",onHand:"Tồn kho",scanTitle:"Đưa camera vào nhãn QR",cancel:"Hủy",
+   newPart:"Vật tư mới — sẽ được thêm vào danh sách",onHand:"Tồn kho",scanTitle:"Quét mã vạch — hoặc chĩa vào mã in trên hộp rồi bấm ĐỌC",readBtn:"Aa  ĐỌC MÃ IN TRÊN HỘP",reading:"Đang đọc…",ocrLoad:"Lần đầu: đang tải bộ đọc chữ…",ocrNone:"Không thấy mã. Đưa gần hơn, giữ yên, thử lại.",ocrPick:"Chưa có trong danh sách. Bấm vào mã đúng:",bcLink:"Mã vạch này sẽ được nhớ cho vật tư này",bcNew:"Mã vạch mới — chọn hoặc gõ mã vật tư một lần. Lần sau sẽ tự điền.",read:"Đã đọc",cancel:"Hủy",
    sent:"ĐÃ GỬI",waiting:"ĐANG CHỜ",failed:"LỖI",demoSt:"THỬ",noHist:"Hôm nay chưa gửi gì.",done:"Đã lưu!",
    queued:"Đã lưu trên điện thoại — sẽ gửi khi có mạng",camErr:"Camera bị chặn. Cho phép camera trong cài đặt.",
    demo:"CHẾ ĐỘ THỬ — chưa kết nối Google Sheet. Không lưu dữ liệu.",waitN:" đang chờ gửi",updated:"Đã cập nhật",
@@ -296,7 +304,7 @@ var T = {
    type:"Entrada / Salida / Balance",IN:"ENTRADA",OUT:"SALIDA",BALANCE:"BALANCE",inSub:"al almacén",outSub:"al proyecto",balSub:"conteo en estante",
    shelf:"Estación / Estante",notes:"Notas",pick:"— Elegir —",other:"OTRO (escribir)",typeName:"Escribe tu nombre",typeProject:"Escribe el proyecto",
    submit:"ENVIAR",fill:"Llena los campos en rojo",today:"Hoy desde este teléfono",partsLoaded:"partes",
-   newPart:"Parte nueva — se agregará a la lista",onHand:"En existencia",scanTitle:"Apunta la cámara a la etiqueta QR",cancel:"Cancelar",
+   newPart:"Parte nueva — se agregará a la lista",onHand:"En existencia",scanTitle:"Escanea el código — o apunta al no. de parte impreso y toca LEER",readBtn:"Aa  LEER NO. DE PARTE IMPRESO",reading:"Leyendo…",ocrLoad:"Primera vez: cargando el lector de texto…",ocrNone:"No se encontró no. de parte. Acércate, no te muevas, intenta otra vez.",ocrPick:"Aún no está en la lista. Toca el no. de parte correcto:",bcLink:"Este código se recordará para esta parte",bcNew:"Código nuevo — elige o escribe el no. de parte una vez. La próxima vez se llena solo.",read:"Leído",cancel:"Cancelar",
    sent:"ENVIADO",waiting:"PENDIENTE",failed:"ERROR",demoSt:"DEMO",noHist:"Nada enviado hoy.",done:"¡Guardado!",
    queued:"Guardado en el teléfono — se enviará con señal",camErr:"Cámara bloqueada. Permítela en la configuración.",
    demo:"MODO DEMO — sin conexión a Google Sheet. No se guarda nada.",waitN:" pendientes",updated:"Lista actualizada",
@@ -361,7 +369,7 @@ function setData(d){
   DATA.items.forEach(function(it){
     BY_PN[npn(it.pn)] = it;
     if (it.id) BY_CODE[npn(it.id)] = it;
-    if (it.barcode) BY_CODE[npn(it.barcode)] = it;
+    String(it.barcode || "").split(",").forEach(function(b){ if (npn(b)) BY_CODE[npn(b)] = it; });
   });
   DATA.onhand.forEach(function(o){ OH[bkey(o.div,o.pn,o.color,o.size)] = o; });
   $("itemCount").textContent = DATA.items.length;
@@ -444,7 +452,11 @@ function acRender(){
     return sa - sb || a.pn.localeCompare(b.pn);
   }).slice(0, 8);
   if (!acList.length || (acList.length === 1 && npn(acList[0].pn) === q && picked === acList[0])){ box.style.display = "none"; return; }
-  acIdx = -1;
+  acPaint(acList);
+}
+function acPaint(list){
+  var box = $("ac");
+  acList = list; acIdx = -1;
   box.innerHTML = acList.map(function(i, n){
     return '<button type="button" data-n="'+n+'"><b>'+hl(i.pn, $("fPn").value)+'</b><span>'+esc(i.desc)+(i.vendor?' · '+esc(i.vendor):'')+'</span></button>';
   }).join("");
@@ -496,6 +508,7 @@ function showInfo(){
         (o && o.shelf ? ' · ' + esc(o.shelf) : '');
     }
   }
+  if (pendingBarcode) html += '<br><span class="link">🔗 ' + esc(t("bcLink")) + ': ' + esc(pendingBarcode) + '</span>';
   el.innerHTML = html; el.style.display = "block";
   renderSubmit();
 }
@@ -518,31 +531,132 @@ function showInfo(){
     }
   });
 })();
+/* ---------- scanned / typed code → part ---------- */
+var pendingBarcode = "";          // a supplier barcode to remember for the chosen part
+
+/* OCR look-alikes folded together so "E1-3949" still matches "El-3949" or "E1 3949" */
+function fold(x){ return npn(x).replace(/[^A-Z0-9]/g,"").replace(/O/g,"0").replace(/[IL]/g,"1").replace(/S/g,"5").replace(/B/g,"8").replace(/Z/g,"2").replace(/G/g,"6"); }
+function findPnInText(text){
+  var up1 = String(text||"").toUpperCase();
+  var exact = up1.replace(/\s+/g,""), fz = fold(up1);
+  var hits = [];
+  DATA.items.forEach(function(it){
+    var p = npn(it.pn); if (p.length < 4) return;
+    if (exact.indexOf(p) >= 0) hits.push({it:it, score:1000 + p.length});
+    else { var f = fold(p); if (f.length >= 4 && fz.indexOf(f) >= 0) hits.push({it:it, score:p.length}); }
+  });
+  hits.sort(function(a,b){ return b.score - a.score; });
+  // drop a hit whose part # sits inside a longer hit (E1-394 inside E1-3949)
+  hits = hits.filter(function(h){
+    return !hits.some(function(o){ return o !== h && fold(o.it.pn).length > fold(h.it.pn).length && fold(o.it.pn).indexOf(fold(h.it.pn)) >= 0; });
+  });
+  // a real part # has digits — word-only codes (STARTER, HILTI) lose to it; exact beats look-alike
+  var withDigits = hits.filter(function(h){ return /\d/.test(h.it.pn); });
+  if (withDigits.length) hits = withDigits;
+  var exact = hits.filter(function(h){ return h.score >= 1000; });
+  if (exact.length) hits = exact;
+  return hits.map(function(h){ return h.it; });
+}
 function resolveCode(raw){
   var s = String(raw || "").trim();
   var m = /[?&]i=([^&#]+)/.exec(s); if (m) s = decodeURIComponent(m[1]);
   var it = BY_CODE[npn(s)] || BY_PN[npn(s)];
-  if (it){ pickItem(it); beep(true); }
-  else { $("fPn").value = up(s); picked = null; $("ac").style.display = "none"; showInfo(); $("fDesc").focus(); }
+  if (it){ pendingBarcode = ""; pickItem(it); beep(true); return; }
+  var hits = findPnInText(s);
+  if (hits.length){
+    pendingBarcode = s;                                   // remember this barcode for that part
+    if (hits.length === 1){ pickItem(hits[0]); beep(true); toast(t("read") + ": " + hits[0].pn, "good"); }
+    else { $("fPn").focus(); acPaint(hits); }
+    return;
+  }
+  if (/^\d{6,}$/.test(npn(s)) || npn(s).length > 24){     // UPC / long supplier code — not a part #
+    pendingBarcode = s; picked = null;
+    $("fPn").value = ""; showInfo(); $("fPn").focus();
+    toast(t("bcNew")); beep(true); return;
+  }
+  pendingBarcode = "";
+  $("fPn").value = up(s); picked = null; $("ac").style.display = "none"; showInfo(); $("fDesc").focus();
 }
 
-/* camera */
+/* ---------- camera ---------- */
 var cam = null;
 function openCam(){
   if (!window.Html5Qrcode){ toast(t("camErr"),"bad"); return; }
   try{ actx = actx || new (window.AudioContext||window.webkitAudioContext)(); actx.resume && actx.resume(); }catch(e){}
+  $("ocrSt").textContent = ""; $("ocrRes").innerHTML = ""; $("readBtn").disabled = false;
   $("camMask").classList.add("show");
   var F = Html5QrcodeSupportedFormats;
   cam = new Html5Qrcode("reader", {verbose:false,
-    formatsToSupport:[F.QR_CODE,F.CODE_128,F.CODE_39,F.EAN_13,F.EAN_8,F.UPC_A,F.UPC_E,F.DATA_MATRIX],
+    formatsToSupport:[F.QR_CODE,F.CODE_128,F.CODE_39,F.CODE_93,F.EAN_13,F.EAN_8,F.UPC_A,F.UPC_E,F.ITF,F.DATA_MATRIX,F.PDF_417],
     experimentalFeatures:{useBarCodeDetectorIfSupported:true}});
-  cam.start({facingMode:"environment"}, {fps:12, qrbox:function(w,h){ var s=Math.min(w,h); return {width:Math.round(s*.8),height:Math.round(s*.8)}; }},
-    function(txt){ closeCam(); resolveCode(txt); }, function(){})
+  var onScan = function(txt){ closeCam(); resolveCode(txt); };
+  var box = function(w,h){ return {width:Math.max(60,Math.round(w*.9)), height:Math.max(60,Math.round(h*.55))}; };
+  // ask for HD so printed text is sharp enough to read; fall back if the phone refuses
+  cam.start({facingMode:"environment"}, {fps:12, qrbox:box,
+      videoConstraints:{facingMode:"environment", width:{ideal:1920}, height:{ideal:1080}}}, onScan, function(){})
+  .catch(function(){
+    if (!cam) return;
+    return cam.start({facingMode:"environment"}, {fps:12, qrbox:box}, onScan, function(){});
+  })
   .catch(function(){ closeCam(); toast(t("camErr"),"bad"); });
 }
 function closeCam(){
   $("camMask").classList.remove("show");
   if (cam){ var c = cam; cam = null; c.stop().catch(function(){}).then(function(){ try{ c.clear(); }catch(e){} }); }
+}
+
+/* ---------- read printed part # (text recognition, loads on first use) ---------- */
+var ocrReady = null;
+function loadOcr(){
+  if (ocrReady) return ocrReady;
+  ocrReady = new Promise(function(res, rej){
+    if (window.Tesseract) return res();
+    var sc = document.createElement("script");
+    sc.src = "https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js";
+    sc.onload = res; sc.onerror = rej; document.head.appendChild(sc);
+  }).then(function(){ return Tesseract.createWorker("eng"); });
+  ocrReady.catch(function(){ ocrReady = null; });
+  return ocrReady;
+}
+function frameCanvas(){
+  var v = document.querySelector("#reader video");
+  if (!v || !v.videoWidth) return null;
+  var sc = Math.min(1, 1600 / v.videoWidth);
+  var c = document.createElement("canvas");
+  c.width = Math.round(v.videoWidth * sc); c.height = Math.round(v.videoHeight * sc);
+  c.getContext("2d").drawImage(v, 0, 0, c.width, c.height);
+  return c;
+}
+function ocrCanvas(c){
+  return loadOcr().then(function(w){ return w.recognize(c); }).then(function(r){ return r.data.text || ""; });
+}
+function readText(){
+  var c = frameCanvas();
+  if (!c){ toast(t("camErr"),"bad"); return; }
+  var btn = $("readBtn"); btn.disabled = true;
+  $("ocrRes").innerHTML = "";
+  $("ocrSt").textContent = window.Tesseract ? t("reading") : t("ocrLoad");
+  ocrCanvas(c).then(handleOcr).catch(function(){
+    $("ocrSt").textContent = t("offline");
+  }).then(function(){ btn.disabled = false; });
+}
+function handleOcr(text){
+  var hits = findPnInText(text);
+  if (hits.length === 1){ closeCam(); pendingBarcode = ""; pickItem(hits[0]); beep(true); toast(t("read") + ": " + hits[0].pn, "good"); return; }
+  if (hits.length > 1){ closeCam(); pendingBarcode = ""; $("fPn").focus(); acPaint(hits); beep(true); return; }
+  // nothing from the list: offer the part-number-looking words that were read
+  var seen = {}, cands = String(text).toUpperCase().split(/[\s,;:|()\[\]"']+/).map(function(w){
+    return w.replace(/^[#\-.\/]+|[#\-.\/]+$/g, "");
+  }).filter(function(w){
+    if (w.length < 4 || w.length > 24 || seen[w] || !/\d/.test(w) || !/^[A-Z0-9\-.\/]+$/.test(w)) return false;
+    seen[w] = 1; return true;
+  }).slice(0, 8);
+  if (!cands.length){ $("ocrSt").textContent = t("ocrNone"); beep(false); return; }
+  $("ocrSt").textContent = t("ocrPick");
+  $("ocrRes").innerHTML = cands.map(function(w){ return '<button type="button">' + esc(w) + '</button>'; }).join("");
+  $("ocrRes").querySelectorAll("button").forEach(function(b){
+    b.onclick = function(){ closeCam(); pendingBarcode = ""; resolveCode(b.textContent); };
+  });
 }
 
 /* Bluetooth scanner typing while no field is focused → part number */
@@ -615,6 +729,7 @@ function submitEntry(){
     toast(t("fill"),"bad"); beep(false); return;
   }
   e.entryId = "E" + Date.now().toString(36).toUpperCase() + device.slice(1,4);
+  e.barcode = pendingBarcode;
   e.device = device;
 
   // local running balance so the screen updates right away
@@ -633,6 +748,8 @@ function submitEntry(){
 
   // clear the item part of the form, keep who/where/PO/vendor/type
   ["fPn","fDesc","fColor","fSize","fQty","fNotes","fShelf"].forEach(function(id){ $(id).value = ""; });
+  if (pendingBarcode && BY_PN[e.pn]) BY_CODE[npn(pendingBarcode)] = BY_PN[e.pn];
+  pendingBarcode = "";
   picked = null; setUnit("EA"); showInfo();
   window.scrollTo({top: $("wPn").getBoundingClientRect().top + window.scrollY - 80, behavior:"smooth"});
   beep(true);
