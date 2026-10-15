@@ -345,7 +345,9 @@ function lsJson(k,d){ try{var v=localStorage.getItem(k);return v?JSON.parse(v):d
 function lsJsonSet(k,v){ try{localStorage.setItem(k,JSON.stringify(v));}catch(e){} }
 function up(s){ return String(s==null?"":s).trim().toUpperCase().replace(/\s+/g," "); }
 function npn(s){ return String(s==null?"":s).trim().toUpperCase().replace(/\s+/g,""); }
-function bkey(d,pn,c,s){ return [d,npn(pn),up(c),up(s)].join("|"); }
+/* loose key: BY77561, BY7-7561, BY7 7561 and by7.7561 are the same part */
+function lk(s){ return npn(s).replace(/[^A-Z0-9]/g,""); }
+function bkey(d,pn,c,s){ return [d,lk(pn),up(c),up(s)].join("|"); }
 function todayIso(){ var d=new Date(); return d.getFullYear()+"-"+("0"+(d.getMonth()+1)).slice(-2)+"-"+("0"+d.getDate()).slice(-2); }
 function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];}); }
 
@@ -367,9 +369,10 @@ function setData(d){
   ["items","workers","projects","onhand","vendors","colors","sizes","shelves"].forEach(function(k){ DATA[k] = d[k] || []; });
   BY_PN = {}; BY_CODE = {}; OH = {};
   DATA.items.forEach(function(it){
-    BY_PN[npn(it.pn)] = it;
-    if (it.id) BY_CODE[npn(it.id)] = it;
-    String(it.barcode || "").split(",").forEach(function(b){ if (npn(b)) BY_CODE[npn(b)] = it; });
+    var k = lk(it.pn), cur = BY_PN[k];
+    if (!cur || (cur.verified === false && it.verified !== false)) BY_PN[k] = it;   // your verified spelling wins
+    if (it.id) BY_CODE[lk(it.id)] = it;
+    String(it.barcode || "").split(",").forEach(function(b){ if (lk(b)) BY_CODE[lk(b)] = it; });
   });
   DATA.onhand.forEach(function(o){ OH[bkey(o.div,o.pn,o.color,o.size)] = o; });
   $("itemCount").textContent = DATA.items.length;
@@ -446,9 +449,9 @@ function acRender(){
   var box = $("ac");
   if (!q){ box.style.display = "none"; acList = []; return; }
   acList = DATA.items.filter(function(i){
-    return npn(i.pn).indexOf(q) >= 0 || up(i.desc).indexOf(qd) >= 0 || (i.id && npn(i.id) === q);
+    return npn(i.pn).indexOf(q) >= 0 || (lk(q) && lk(i.pn).indexOf(lk(q)) >= 0) || up(i.desc).indexOf(qd) >= 0 || (i.id && npn(i.id) === q);
   }).sort(function(a,b){
-    var sa = npn(a.pn).indexOf(q) === 0 ? 0 : 1, sb = npn(b.pn).indexOf(q) === 0 ? 0 : 1;
+    var sa = lk(a.pn).indexOf(lk(q)) === 0 ? 0 : 1, sb = lk(b.pn).indexOf(lk(q)) === 0 ? 0 : 1;
     return sa - sb || a.pn.localeCompare(b.pn);
   }).slice(0, 8);
   if (!acList.length || (acList.length === 1 && npn(acList[0].pn) === q && picked === acList[0])){ box.style.display = "none"; return; }
@@ -488,14 +491,14 @@ function pickItem(it){
   if (!$("fQty").value) $("fQty").focus();
 }
 function matchTyped(){
-  var it = BY_PN[npn($("fPn").value)];
+  var it = BY_PN[lk($("fPn").value)];
   if (it && it !== picked) pickItem(it);
   else if (!it){ picked = null; showInfo(); }
 }
 function showInfo(){
   var el = $("pinfo"), pn = npn($("fPn").value);
   if (!pn){ el.style.display = "none"; renderSubmit(); return; }
-  var it = BY_PN[pn];
+  var it = BY_PN[lk(pn)];
   var html = "";
   if (!it) html = '<span class="new">★ ' + esc(t("newPart")) + '</span>';
   else {
@@ -538,10 +541,10 @@ var pendingBarcode = "";          // a supplier barcode to remember for the chos
 function fold(x){ return npn(x).replace(/[^A-Z0-9]/g,"").replace(/O/g,"0").replace(/[IL]/g,"1").replace(/S/g,"5").replace(/B/g,"8").replace(/Z/g,"2").replace(/G/g,"6"); }
 function findPnInText(text){
   var up1 = String(text||"").toUpperCase();
-  var exact = up1.replace(/\s+/g,""), fz = fold(up1);
+  var exact = lk(up1), fz = fold(up1);
   var hits = [];
-  DATA.items.forEach(function(it){
-    var p = npn(it.pn); if (p.length < 4) return;
+  Object.keys(BY_PN).forEach(function(key){              // one entry per part (verified spelling)
+    var it = BY_PN[key], p = key; if (p.length < 4) return;
     if (exact.indexOf(p) >= 0) hits.push({it:it, score:1000 + p.length});
     else { var f = fold(p); if (f.length >= 4 && fz.indexOf(f) >= 0) hits.push({it:it, score:p.length}); }
   });
@@ -560,7 +563,7 @@ function findPnInText(text){
 function resolveCode(raw){
   var s = String(raw || "").trim();
   var m = /[?&]i=([^&#]+)/.exec(s); if (m) s = decodeURIComponent(m[1]);
-  var it = BY_CODE[npn(s)] || BY_PN[npn(s)];
+  var it = BY_CODE[lk(s)] || BY_PN[lk(s)];
   if (it){ pendingBarcode = ""; pickItem(it); beep(true); return; }
   var hits = findPnInText(s);
   if (hits.length){
@@ -737,9 +740,10 @@ function submitEntry(){
   var prev = o ? o.qty : 0;
   var bal = e.type === "BALANCE" ? e.qty : e.type === "IN" ? prev + e.qty : prev - e.qty;
   OH[k] = {div:div, pn:e.pn, color:e.color, size:e.size, qty:bal, unit:e.unit, shelf: e.shelf || (o && o.shelf) || ""};
-  if (!BY_PN[e.pn]){
+  if (BY_PN[lk(e.pn)]) e.pn = npn(BY_PN[lk(e.pn)].pn);        // save your official spelling
+  if (!BY_PN[lk(e.pn)]){
     var ni = {id:"", pn:e.pn, desc:e.desc, vendor:e.vendor, color:e.color, size:e.size, unit:e.unit, shelf:e.shelf, verified:false};
-    DATA.items.push(ni); BY_PN[e.pn] = ni; $("itemCount").textContent = DATA.items.length;
+    DATA.items.push(ni); BY_PN[lk(e.pn)] = ni; $("itemCount").textContent = DATA.items.length;
   }
   addSuggest("vendors","dlVendor",e.vendor); addSuggest("colors","dlColor",e.color);
   addSuggest("sizes","dlSize",e.size); addSuggest("shelves","dlShelf",e.shelf);
@@ -748,7 +752,7 @@ function submitEntry(){
 
   // clear the item part of the form, keep who/where/PO/vendor/type
   ["fPn","fDesc","fColor","fSize","fQty","fNotes","fShelf"].forEach(function(id){ $(id).value = ""; });
-  if (pendingBarcode && BY_PN[e.pn]) BY_CODE[npn(pendingBarcode)] = BY_PN[e.pn];
+  if (pendingBarcode && BY_PN[lk(e.pn)]) BY_CODE[lk(pendingBarcode)] = BY_PN[lk(e.pn)];
   pendingBarcode = "";
   picked = null; setUnit("EA"); showInfo();
   window.scrollTo({top: $("wPn").getBoundingClientRect().top + window.scrollY - 80, behavior:"smooth"});
@@ -779,7 +783,7 @@ function flushQueue(fromSubmit){
         setHist(job.entryId, "ok", null, r.balance);
         var k = bkey(job.division, job.pn, job.color, job.size);
         if (OH[k]) OH[k].qty = r.balance;
-        if (r.newItem){ BY_PN[npn(r.newItem.pn)] = r.newItem; if (r.newItem.id) BY_CODE[npn(r.newItem.id)] = r.newItem; }
+        if (r.newItem){ BY_PN[lk(r.newItem.pn)] = r.newItem; if (r.newItem.id) BY_CODE[lk(r.newItem.id)] = r.newItem; }
         if (fromSubmit) toast(t("done") + " · " + t("bal") + ": " + r.balance + " " + job.unit, "good");
       } else {
         setHist(job.entryId, "fail", r.error);
